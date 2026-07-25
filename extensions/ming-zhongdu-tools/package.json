@@ -1,0 +1,80 @@
+{
+  "package_version": 2,
+  "version": "1.2.1",
+  "name": "ming-zhongdu-tools",
+  "title": "明中都工具",
+  "description": "明中都项目的大地图与照片透视区域编辑工具。",
+  "author": "Ming Zhongdu Project",
+  "editor": ">=3.8.0",
+  "main": "./dist/main.js",
+  "panels": {
+    "region-editor": {
+      "title": "照片透视区域编辑器",
+      "type": "dockable",
+      "main": "./dist/panels/region-editor",
+      "size": {
+        "min-width": 300,
+        "min-height": 480,
+        "width": 360,
+        "height": 720
+      }
+    }
+  },
+  "contributions": {
+    "scene": {
+      "script": "./dist/scene.js"
+    },
+    "menu": [
+      {
+        "path": "i18n:menu.extension/明中都工具",
+        "label": "打开大地图场景",
+        "message": "open-overworld"
+      },
+      {
+        "path": "i18n:menu.extension/明中都工具",
+        "label": "刷新资源并打开大地图",
+        "message": "refresh-and-open-overworld"
+      },
+      {
+        "path": "i18n:menu.extension/明中都工具",
+        "label": "打开小地点模板",
+        "message": "open-location-template"
+      },
+      {
+        "path": "i18n:menu.extension/明中都工具",
+        "label": "照片透视区域编辑器",
+        "message": "open-region-editor"
+      }
+    ],
+    "messages": {
+      "open-overworld": {
+        "methods": [
+          "openOverworld"
+        ],
+        "public": true,
+        "description": "打开 assets/scenes/Overworld.scene"
+      },
+      "refresh-and-open-overworld": {
+        "methods": [
+          "refreshAndOpenOverworld"
+        ],
+        "public": true,
+        "description": "刷新 assets 后打开大地图场景"
+      },
+      "open-location-template": {
+        "methods": [
+          "openLocationTemplate"
+        ],
+        "public": true,
+        "description": "刷新 assets 后打开小地点模板"
+      },
+      "open-region-editor": {
+        "methods": [
+          "openRegionEditor"
+        ],
+        "public": true,
+        "description": "打开照片透视区域编辑器"
+      }
+    }
+  }
+}

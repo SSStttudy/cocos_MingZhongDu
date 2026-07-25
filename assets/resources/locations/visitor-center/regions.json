@@ -1,0 +1,1446 @@
+{
+  "version": 1,
+  "locationId": "visitor-center",
+  "referenceSize": {
+    "width": 1365,
+    "height": 1024
+  },
+  "scenes": {
+    "exterior": {
+      "regions": [
+        {
+          "id": "obstacle-wang",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.063967,
+              "y": 0.547962
+            },
+            {
+              "x": 0.238105,
+              "y": 0.526123
+            },
+            {
+              "x": 0.17665,
+              "y": 0.509509
+            },
+            {
+              "x": 0.027987,
+              "y": 0.526123
+            }
+          ]
+        },
+        {
+          "id": "obstacle-tree",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.661675,
+              "y": 0.605433
+            },
+            {
+              "x": 0.763305,
+              "y": 0.533961
+            },
+            {
+              "x": 0.592105,
+              "y": 0.512121
+            },
+            {
+              "x": 0.404249,
+              "y": 0.552246
+            }
+          ]
+        },
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.906908,
+              "y": 0.568973
+            },
+            {
+              "x": 0.905801,
+              "y": 0.518207
+            },
+            {
+              "x": 0.759141,
+              "y": 0.503965
+            },
+            {
+              "x": 0.706678,
+              "y": 0.519808
+            },
+            {
+              "x": 0.277645,
+              "y": 0.474093
+            },
+            {
+              "x": -0.000185,
+              "y": 0.480454
+            },
+            {
+              "x": 0.001552,
+              "y": 0.997807
+            },
+            {
+              "x": 1.000782,
+              "y": 0.999668
+            },
+            {
+              "x": 0.99788,
+              "y": 0.577327
+            }
+          ]
+        },
+        {
+          "id": "spawn-visitor",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.912413,
+              "y": 0.758536
+            },
+            {
+              "x": 0.9256,
+              "y": 0.740958
+            },
+            {
+              "x": 0.912413,
+              "y": 0.72338
+            },
+            {
+              "x": 0.899226,
+              "y": 0.740958
+            }
+          ]
+        },
+        {
+          "id": "spawn-interior",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.028864,
+              "y": 0.546586
+            },
+            {
+              "x": 0.042051,
+              "y": 0.529008
+            },
+            {
+              "x": 0.028864,
+              "y": 0.51143
+            },
+            {
+              "x": 0.015677,
+              "y": 0.529008
+            }
+          ]
+        },
+        {
+          "id": "to-visitor-building",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "visitor-building",
+          "targetSpawnId": "spawn-exterior",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 1.004456,
+              "y": 0.998497
+            },
+            {
+              "x": 0.997452,
+              "y": 0.579723
+            },
+            {
+              "x": 0.926557,
+              "y": 0.569021
+            },
+            {
+              "x": 0.921261,
+              "y": 0.599762
+            }
+          ]
+        },
+        {
+          "id": "to-interior",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "interior",
+          "targetSpawnId": "spawn-exterior",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": -0.001055,
+              "y": 0.486293
+            },
+            {
+              "x": 0.033881,
+              "y": 0.485941
+            },
+            {
+              "x": 0.025754,
+              "y": 0.463086
+            },
+            {
+              "x": -0.000558,
+              "y": 0.463551
+            }
+          ]
+        }
+      ]
+    },
+    "interior": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "exterior",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.002108,
+              "y": 1.000927
+            },
+            {
+              "x": 1.001919,
+              "y": 0.998079
+            },
+            {
+              "x": 0.781801,
+              "y": 0.543447
+            },
+            {
+              "x": 0.530495,
+              "y": 0.516639
+            },
+            {
+              "x": 0.001529,
+              "y": 0.657232
+            }
+          ]
+        },
+        {
+          "id": "obstacle-map",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.09232,
+              "y": 0.642464
+            },
+            {
+              "x": 0.487644,
+              "y": 0.791443
+            },
+            {
+              "x": 0.628136,
+              "y": 0.60149
+            },
+            {
+              "x": 0.360661,
+              "y": 0.559744
+            }
+          ]
+        },
+        {
+          "id": "to-exterior",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "exterior",
+          "targetSpawnId": "spawn-interior",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.861113,
+              "y": 0.715872
+            },
+            {
+              "x": 0.900442,
+              "y": 0.707742
+            },
+            {
+              "x": 0.87247,
+              "y": 0.664848
+            },
+            {
+              "x": 0.838399,
+              "y": 0.670174
+            }
+          ]
+        },
+        {
+          "id": "spawn-exterior",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.833333,
+              "y": 0.698242
+            },
+            {
+              "x": 0.84652,
+              "y": 0.680664
+            },
+            {
+              "x": 0.833333,
+              "y": 0.663086
+            },
+            {
+              "x": 0.820147,
+              "y": 0.680664
+            }
+          ]
+        }
+      ]
+    },
+    "entrance-gate": {
+      "regions": [
+        {
+          "id": "spawn-road",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.779137,
+              "y": 0.644796
+            },
+            {
+              "x": 0.792324,
+              "y": 0.627218
+            },
+            {
+              "x": 0.779137,
+              "y": 0.60964
+            },
+            {
+              "x": 0.76595,
+              "y": 0.627218
+            }
+          ]
+        },
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.000255,
+              "y": 1.001281
+            },
+            {
+              "x": 1.039213,
+              "y": 0.99917
+            },
+            {
+              "x": 0.846836,
+              "y": 0.563945
+            },
+            {
+              "x": 0.731738,
+              "y": 0.56546
+            },
+            {
+              "x": 0.707226,
+              "y": 0.586465
+            },
+            {
+              "x": 0.220697,
+              "y": 0.566946
+            },
+            {
+              "x": -0.000944,
+              "y": 0.579066
+            }
+          ]
+        },
+        {
+          "id": "to-main-road",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "main-road",
+          "targetSpawnId": "spawn-gate",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.855014,
+              "y": 0.580511
+            },
+            {
+              "x": 0.837077,
+              "y": 0.537017
+            },
+            {
+              "x": 0.785316,
+              "y": 0.531778
+            },
+            {
+              "x": 0.774553,
+              "y": 0.573451
+            }
+          ]
+        }
+      ]
+    },
+    "main-road": {
+      "regions": [
+        {
+          "id": "spawn-gate",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.85396,
+              "y": 0.899961
+            },
+            {
+              "x": 0.867147,
+              "y": 0.882383
+            },
+            {
+              "x": 0.85396,
+              "y": 0.864805
+            },
+            {
+              "x": 0.840773,
+              "y": 0.882383
+            }
+          ]
+        },
+        {
+          "id": "spawn-cafe",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.535533,
+              "y": 0.575691
+            },
+            {
+              "x": 0.548719,
+              "y": 0.558113
+            },
+            {
+              "x": 0.535533,
+              "y": 0.540535
+            },
+            {
+              "x": 0.522346,
+              "y": 0.558113
+            }
+          ]
+        },
+        {
+          "id": "spawn-visitor",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.635898,
+              "y": 0.54427
+            },
+            {
+              "x": 0.648232,
+              "y": 0.534082
+            },
+            {
+              "x": 0.636752,
+              "y": 0.523895
+            },
+            {
+              "x": 0.626977,
+              "y": 0.53465
+            }
+          ]
+        },
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": -0.00019,
+              "y": 0.99611
+            },
+            {
+              "x": 0.997312,
+              "y": 0.999082
+            },
+            {
+              "x": 0.998742,
+              "y": 0.617578
+            },
+            {
+              "x": 0.864699,
+              "y": 0.616143
+            },
+            {
+              "x": 0.662832,
+              "y": 0.49488
+            },
+            {
+              "x": 0.645762,
+              "y": 0.494263
+            },
+            {
+              "x": 0.570238,
+              "y": 0.548353
+            },
+            {
+              "x": 0.488527,
+              "y": 0.544709
+            },
+            {
+              "x": 0.471769,
+              "y": 0.563488
+            },
+            {
+              "x": 0.524399,
+              "y": 0.57868
+            },
+            {
+              "x": 0.479695,
+              "y": 0.607034
+            },
+            {
+              "x": 0.275953,
+              "y": 0.599361
+            },
+            {
+              "x": 0.002688,
+              "y": 0.693029
+            }
+          ]
+        },
+        {
+          "id": "to-entrance-gate",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "entrance-gate",
+          "targetSpawnId": "spawn-road",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.323204,
+              "y": 0.995191
+            },
+            {
+              "x": 0.946221,
+              "y": 1.002706
+            },
+            {
+              "x": 0.947758,
+              "y": 0.948281
+            },
+            {
+              "x": 0.379406,
+              "y": 0.969915
+            }
+          ]
+        },
+        {
+          "id": "to-cafe-garden",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "cafe-garden",
+          "targetSpawnId": "spawn-road",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.486859,
+              "y": 0.563201
+            },
+            {
+              "x": 0.507188,
+              "y": 0.541568
+            },
+            {
+              "x": 0.477292,
+              "y": 0.538152
+            },
+            {
+              "x": 0.455597,
+              "y": 0.556142
+            }
+          ]
+        },
+        {
+          "id": "to-visitor-building",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "visitor-building",
+          "targetSpawnId": "spawn-road",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.605501,
+              "y": 0.529021
+            },
+            {
+              "x": 0.623977,
+              "y": 0.514058
+            },
+            {
+              "x": 0.601662,
+              "y": 0.511603
+            },
+            {
+              "x": 0.58404,
+              "y": 0.523155
+            }
+          ]
+        }
+      ]
+    },
+    "cafe-garden": {
+      "regions": [
+        {
+          "id": "spawn-road",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.892226,
+              "y": 0.889031
+            },
+            {
+              "x": 0.905412,
+              "y": 0.871453
+            },
+            {
+              "x": 0.892226,
+              "y": 0.853875
+            },
+            {
+              "x": 0.879039,
+              "y": 0.871453
+            }
+          ]
+        },
+        {
+          "id": "spawn-leisure",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.514946,
+              "y": 0.611088
+            },
+            {
+              "x": 0.528133,
+              "y": 0.59351
+            },
+            {
+              "x": 0.514946,
+              "y": 0.575932
+            },
+            {
+              "x": 0.501759,
+              "y": 0.59351
+            }
+          ]
+        },
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.00391,
+              "y": 0.996109
+            },
+            {
+              "x": 0.999488,
+              "y": 0.998221
+            },
+            {
+              "x": 0.99927,
+              "y": 0.771439
+            },
+            {
+              "x": 0.407733,
+              "y": 0.670358
+            },
+            {
+              "x": 0.577898,
+              "y": 0.581382
+            },
+            {
+              "x": 0.551268,
+              "y": 0.570162
+            },
+            {
+              "x": 0.335556,
+              "y": 0.611126
+            },
+            {
+              "x": 0.001878,
+              "y": 0.570112
+            }
+          ]
+        },
+        {
+          "id": "to-main-road",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "main-road",
+          "targetSpawnId": "spawn-cafe",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.997686,
+              "y": 0.998641
+            },
+            {
+              "x": 0.999495,
+              "y": 0.771029
+            },
+            {
+              "x": 0.98341,
+              "y": 0.765447
+            },
+            {
+              "x": 0.971488,
+              "y": 1.000194
+            }
+          ]
+        },
+        {
+          "id": "to-leisure-plaza",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "leisure-plaza",
+          "targetSpawnId": "spawn-cafe",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.555738,
+              "y": 0.596307
+            },
+            {
+              "x": 0.589618,
+              "y": 0.577366
+            },
+            {
+              "x": 0.564168,
+              "y": 0.564044
+            },
+            {
+              "x": 0.529586,
+              "y": 0.569874
+            }
+          ]
+        }
+      ]
+    },
+    "leisure-plaza": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.002543,
+              "y": 0.997932
+            },
+            {
+              "x": 0.996567,
+              "y": 1.001484
+            },
+            {
+              "x": 0.996568,
+              "y": 0.538566
+            },
+            {
+              "x": 0.736031,
+              "y": 0.496059
+            },
+            {
+              "x": 0.490435,
+              "y": 0.510114
+            },
+            {
+              "x": 0.404333,
+              "y": 0.459105
+            },
+            {
+              "x": 0.341867,
+              "y": 0.457802
+            },
+            {
+              "x": 0.336892,
+              "y": 0.598685
+            },
+            {
+              "x": -0.002033,
+              "y": 0.638958
+            }
+          ]
+        },
+        {
+          "id": "spawn-cafe",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.755116,
+              "y": 0.915652
+            },
+            {
+              "x": 0.768303,
+              "y": 0.898074
+            },
+            {
+              "x": 0.755116,
+              "y": 0.880496
+            },
+            {
+              "x": 0.74193,
+              "y": 0.898074
+            }
+          ]
+        },
+        {
+          "id": "spawn-visitor",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.398529,
+              "y": 0.519724
+            },
+            {
+              "x": 0.411716,
+              "y": 0.502146
+            },
+            {
+              "x": 0.398529,
+              "y": 0.484567
+            },
+            {
+              "x": 0.385342,
+              "y": 0.502146
+            }
+          ]
+        },
+        {
+          "id": "obstacle-chair-1",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.997456,
+              "y": 0.777501
+            },
+            {
+              "x": 1.002525,
+              "y": 0.625402
+            },
+            {
+              "x": 0.811992,
+              "y": 0.665479
+            }
+          ]
+        },
+        {
+          "id": "obstacle-chair-2",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.610698,
+              "y": 0.568
+            },
+            {
+              "x": 0.679477,
+              "y": 0.567403
+            },
+            {
+              "x": 0.635297,
+              "y": 0.53766
+            },
+            {
+              "x": 0.592484,
+              "y": 0.551008
+            }
+          ]
+        },
+        {
+          "id": "to-cafe-garden",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "cafe-garden",
+          "targetSpawnId": "spawn-leisure",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.590838,
+              "y": 1.002053
+            },
+            {
+              "x": 0.996922,
+              "y": 1.000633
+            },
+            {
+              "x": 0.999328,
+              "y": 0.914373
+            },
+            {
+              "x": 0.623332,
+              "y": 0.958984
+            }
+          ]
+        },
+        {
+          "id": "to-visitor-building",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "visitor-building",
+          "targetSpawnId": "spawn-leisure",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.340244,
+              "y": 0.466487
+            },
+            {
+              "x": 0.419284,
+              "y": 0.466307
+            },
+            {
+              "x": 0.394837,
+              "y": 0.447362
+            },
+            {
+              "x": 0.342667,
+              "y": 0.448113
+            }
+          ]
+        }
+      ]
+    },
+    "visitor-building": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.518939,
+              "y": 0.946143
+            },
+            {
+              "x": 0.496664,
+              "y": 0.999048
+            },
+            {
+              "x": 0.99959,
+              "y": 0.998401
+            },
+            {
+              "x": 0.999632,
+              "y": 0.573685
+            },
+            {
+              "x": 0.491637,
+              "y": 0.559424
+            },
+            {
+              "x": 0.381821,
+              "y": 0.535265
+            },
+            {
+              "x": 0.033741,
+              "y": 0.587374
+            },
+            {
+              "x": 0.061363,
+              "y": 0.667697
+            },
+            {
+              "x": -0.002475,
+              "y": 0.687039
+            },
+            {
+              "x": -0.003388,
+              "y": 0.730385
+            }
+          ]
+        },
+        {
+          "id": "spawn-leisure",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.773603,
+              "y": 0.919964
+            },
+            {
+              "x": 0.78679,
+              "y": 0.902386
+            },
+            {
+              "x": 0.773603,
+              "y": 0.884808
+            },
+            {
+              "x": 0.760416,
+              "y": 0.902386
+            }
+          ]
+        },
+        {
+          "id": "spawn-exterior",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.275078,
+              "y": 0.588299
+            },
+            {
+              "x": 0.288265,
+              "y": 0.570721
+            },
+            {
+              "x": 0.275078,
+              "y": 0.553143
+            },
+            {
+              "x": 0.261892,
+              "y": 0.570721
+            }
+          ]
+        },
+        {
+          "id": "spawn-road",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.925414,
+              "y": 0.66889
+            },
+            {
+              "x": 0.938601,
+              "y": 0.651312
+            },
+            {
+              "x": 0.925414,
+              "y": 0.633733
+            },
+            {
+              "x": 0.912227,
+              "y": 0.651312
+            }
+          ]
+        },
+        {
+          "id": "to-leisure-plaza",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "leisure-plaza",
+          "targetSpawnId": "spawn-visitor",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.498757,
+              "y": 0.995014
+            },
+            {
+              "x": 1.0016,
+              "y": 0.998169
+            },
+            {
+              "x": 1.000739,
+              "y": 0.957837
+            },
+            {
+              "x": 0.764714,
+              "y": 0.958984
+            }
+          ]
+        },
+        {
+          "id": "to-exterior",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "exterior",
+          "targetSpawnId": "spawn-visitor",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.219647,
+              "y": 0.58609
+            },
+            {
+              "x": 0.253397,
+              "y": 0.560049
+            },
+            {
+              "x": 0.242103,
+              "y": 0.54
+            },
+            {
+              "x": 0.178786,
+              "y": 0.550291
+            }
+          ]
+        },
+        {
+          "id": "to-main-road",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "main-road",
+          "targetSpawnId": "spawn-visitor",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.99786,
+              "y": 0.75494
+            },
+            {
+              "x": 0.999634,
+              "y": 0.573943
+            },
+            {
+              "x": 0.961034,
+              "y": 0.574862
+            },
+            {
+              "x": 0.981286,
+              "y": 0.708271
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
