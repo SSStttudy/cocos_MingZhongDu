@@ -3,6 +3,7 @@ import {
     Camera,
     Color,
     Component,
+    director,
     EventKeyboard,
     EventTouch,
     Graphics,
@@ -32,6 +33,7 @@ import {
     OverworldRouteSegment,
 } from './OverworldConfig';
 import { LocationTransitionState } from '../location/LocationTransitionState';
+import { DirectionalWalkAnimator } from '../player/DirectionalWalkAnimator';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -49,12 +51,14 @@ export class OverworldBootstrap extends Component {
     @property({ type: SpriteFrame, tooltip: '编辑器与运行时使用的大地图底图' })
     mapSpriteFrame: SpriteFrame | null = null;
 
-    private readonly moveSpeed = 270;
+    private readonly moveSpeed = 110;
     private readonly playerRadius = 22;
     private readonly joystickRadius = 72;
 
     private world!: Node;
+    private playerShadow!: Node;
     private player!: Node;
+    private playerAnimator!: DirectionalWalkAnimator;
     private joystick!: Node;
     private joystickKnob!: Node;
     private entryPanel!: Node;
@@ -73,7 +77,7 @@ export class OverworldBootstrap extends Component {
     private routeSegments: OverworldRouteSegment[] = [];
     private entryPoints: ResolvedEntryPoint[] = [];
     private activeEntryPoint: ResolvedEntryPoint | null = null;
-    private entryCooldown = 0;
+    private activeEntryIds = new Set<string>();
     private lastEditorCalibrationHash = '';
     private lastCanvasWidth = 0;
     private lastCanvasHeight = 0;
@@ -107,7 +111,6 @@ export class OverworldBootstrap extends Component {
             this.updateEditorCalibrationIfNeeded();
             return;
         }
-        this.entryCooldown = Math.max(0, this.entryCooldown - deltaTime);
         this.layoutScreenUi(false);
         this.updateMovement(deltaTime);
         this.updateCamera(deltaTime);
@@ -184,7 +187,8 @@ export class OverworldBootstrap extends Component {
         this.createMapOverlay();
         this.createPlayer();
         this.world.getChildByName('MapMarkers')?.setSiblingIndex(1);
-        this.player.setSiblingIndex(2);
+        this.playerShadow.setSiblingIndex(2);
+        this.player.setSiblingIndex(3);
         this.world.setPosition(-this.playerPosition.x, -this.playerPosition.y, 0);
     }
 
@@ -534,22 +538,22 @@ export class OverworldBootstrap extends Component {
     }
 
     private createPlayer(): void {
+        this.playerShadow = new Node('PlayerShadow');
+        this.playerShadow.layer = Layers.Enum.UI_2D;
+        this.playerShadow.addComponent(UITransform).setContentSize(40, 14);
+        const shadow = this.playerShadow.addComponent(Graphics);
+        shadow.fillColor = new Color(30, 25, 20, 56);
+        shadow.ellipse(0, 1, 18, 5);
+        shadow.fill();
+        this.playerShadow.setPosition(this.playerPosition.x, this.playerPosition.y + 1, 0);
+        this.world.addChild(this.playerShadow);
+
         this.player = new Node('Player');
         this.player.layer = Layers.Enum.UI_2D;
-        this.player.addComponent(UITransform).setContentSize(62, 78);
-        const graphics = this.player.addComponent(Graphics);
-        graphics.fillColor = new Color(63, 86, 82, 255);
-        graphics.circle(0, 1, this.playerRadius + 5);
-        graphics.fill();
-        graphics.fillColor = new Color(244, 207, 111, 255);
-        graphics.circle(0, 4, this.playerRadius - 4);
-        graphics.fill();
-        graphics.fillColor = new Color(72, 91, 75, 255);
-        graphics.moveTo(0, 33);
-        graphics.lineTo(-10, 17);
-        graphics.lineTo(10, 17);
-        graphics.close();
-        graphics.fill();
+        this.player.addComponent(UITransform);
+        this.player.addComponent(Sprite);
+        this.playerAnimator = this.player.addComponent(DirectionalWalkAnimator);
+        this.playerAnimator.setDisplaySize(66, 88);
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
         this.world.addChild(this.player);
     }
@@ -712,13 +716,19 @@ export class OverworldBootstrap extends Component {
     }
 
     private updateMovement(deltaTime: number): void {
-        if (this.pausedByEntrance) return;
+        if (this.pausedByEntrance) {
+            this.playerAnimator?.stop();
+            return;
+        }
         this.moveInput.set(
             this.keyboardInput.x + this.joystickInput.x,
             this.keyboardInput.y + this.joystickInput.y,
         );
         if (this.moveInput.lengthSqr() > 1) this.moveInput.normalize();
-        if (this.moveInput.lengthSqr() < 0.001) return;
+        if (this.moveInput.lengthSqr() < 0.001) {
+            this.playerAnimator?.setMovement(this.moveInput, false);
+            return;
+        }
 
         const previousPosition = this.playerPosition.clone();
         const step = this.moveInput.clone().multiplyScalar(this.moveSpeed * deltaTime);
@@ -726,7 +736,10 @@ export class OverworldBootstrap extends Component {
         if (this.canStandAt(nextX)) this.playerPosition.x = nextX.x;
         const nextY = new Vec2(this.playerPosition.x, this.playerPosition.y + step.y);
         if (this.canStandAt(nextY)) this.playerPosition.y = nextY.y;
+        const moved = Vec2.distance(previousPosition, this.playerPosition) > 0.01;
+        this.playerAnimator?.setMovement(this.moveInput, moved);
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
+        this.playerShadow.setPosition(this.playerPosition.x, this.playerPosition.y + 1, 0);
         this.checkEntrance(previousPosition);
     }
 
@@ -751,17 +764,22 @@ export class OverworldBootstrap extends Component {
     }
 
     private checkEntrance(previousPosition?: Vec2): void {
-        if (this.entryCooldown > 0) return;
+        const nextActiveIds = new Set<string>();
         for (const point of this.entryPoints) {
             const currentDistance = Vec2.distance(this.playerPosition, point.position);
+            if (currentDistance <= point.triggerRadius) nextActiveIds.add(point.id);
             const sweptDistance = previousPosition
                 ? this.distanceToSegment(point.position, previousPosition, this.playerPosition)
                 : currentDistance;
-            if (Math.min(currentDistance, sweptDistance) <= point.triggerRadius) {
+            const crossed = Math.min(currentDistance, sweptDistance) <= point.triggerRadius;
+            if (crossed && !this.activeEntryIds.has(point.id)) {
+                nextActiveIds.add(point.id);
+                this.activeEntryIds = nextActiveIds;
                 this.traverseLocation(point);
                 return;
             }
         }
+        this.activeEntryIds = nextActiveIds;
     }
 
     private distanceToSegment(point: Vec2, start: Vec2, end: Vec2): number {
@@ -778,6 +796,18 @@ export class OverworldBootstrap extends Component {
     }
 
     private traverseLocation(source: ResolvedEntryPoint): void {
+        if (source.entrance.id === 'location-1') {
+            const localEntryId = source.id.replace(/^location-/, '');
+            const entersFromWest = /-west-\d+$/.test(source.id);
+            LocationTransitionState.enterLocation(
+                'visitor-center',
+                entersFromWest ? 'entrance-gate' : 'main-road',
+                `spawn-${localEntryId}`,
+            );
+            director.loadScene('LocationTemplate');
+            return;
+        }
+
         const alternatives = this.entryPoints.filter((point) => (
             point.entrance.id === source.entrance.id && point.id !== source.id
         ));
@@ -815,7 +845,7 @@ export class OverworldBootstrap extends Component {
 
         this.snapPlayerToWalkableRoute();
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
-        this.entryCooldown = 1.1;
+        this.playerShadow.setPosition(this.playerPosition.x, this.playerPosition.y + 1, 0);
         this.node.emit('overworld-location-traverse', {
             locationId: source.entrance.id,
             entryId: source.id,
@@ -854,6 +884,7 @@ export class OverworldBootstrap extends Component {
         this.playerPosition.add(direction);
         this.snapPlayerToWalkableRoute();
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
+        this.playerShadow.setPosition(this.playerPosition.x, this.playerPosition.y + 1, 0);
     }
 
     private updateCamera(deltaTime: number): void {
@@ -966,7 +997,6 @@ export class OverworldBootstrap extends Component {
         outward.normalize().multiplyScalar(point.triggerRadius + this.playerRadius + 8);
         this.playerPosition.set(point.position).add(outward);
         this.snapPlayerToWalkableRoute();
-        this.entryCooldown = 1.2;
         return true;
     }
 

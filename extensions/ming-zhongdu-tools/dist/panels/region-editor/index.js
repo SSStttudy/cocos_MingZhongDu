@@ -17,6 +17,9 @@ module.exports = Editor.Panel.define({
   <section class="scene-section">
     <h3>正在编辑的分镜</h3>
     <select id="scene-select"><option value="exterior">exterior</option><option value="interior">interior</option></select>
+    <h3 style="margin-top:12px">透视标定</h3>
+    <button id="ensure-perspective">创建／修复当前分镜标定</button>
+    <small><code>PerspectiveNear</code> 的下边缘是最近点，矩形高度是人物高度；<code>PerspectiveHorizon</code> 是视觉终线。两个节点只需上下调整 Y。</small>
     <small>切换后，背景与区域会一起切换。每张照片分镜独立保存。</small>
   </section>
   <section>
@@ -82,7 +85,7 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
 #status { white-space:pre-wrap; max-height:180px; overflow:auto; padding:8px; background:#17191b; border-radius:4px; }
 `,
     $: {
-        refresh:'#refresh', scene:'#scene-select', newId:'#new-id', newType:'#new-type', newSides:'#new-sides', newRadius:'#new-radius', create:'#create',
+        refresh:'#refresh', scene:'#scene-select', ensurePerspective:'#ensure-perspective', newId:'#new-id', newType:'#new-type', newSides:'#new-sides', newRadius:'#new-radius', create:'#create',
         list:'#region-list', editId:'#edit-id', editType:'#edit-type', priority:'#priority', enabled:'#enabled', handlerId:'#handler-id', prompt:'#prompt',
         triggerMode:'#trigger-mode', payload:'#payload', targetSpawnRef:'#target-spawn-ref', overworldEntry:'#overworld-entry',
         apply:'#apply', addVertex:'#add-vertex', removeVertex:'#remove-vertex', delete:'#delete', validate:'#validate', saveApply:'#save-apply',
@@ -171,6 +174,12 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
             } catch (error) { this.setStatus(`重新扫描失败：${error.message || error}`); }
         });
         this.$.scene.addEventListener('change',()=>this.refreshRegions());
+        this.$.ensurePerspective.addEventListener('click',async()=>{try{
+            await this.activateScene();
+            const result=await runScene('ensurePerspectiveCalibration',this.sceneId());
+            await this.saveApply('透视标定已创建；请在场景中只上下拖动两个标准节点');
+            this.setStatus(`透视标定已创建并保存\n${JSON.stringify(result,null,2)}`);
+        }catch(error){this.setStatus(`创建透视标定失败：${error.message||error}`);}});
         this.$.list.addEventListener('change',()=>this.loadSelected());
         this.$.create.addEventListener('click',async()=>{ try {
             await this.activateScene();

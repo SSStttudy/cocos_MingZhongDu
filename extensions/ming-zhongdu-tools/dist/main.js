@@ -66,7 +66,7 @@ async function handleBridgeRequest(request, response) {
             ok: true,
             extension: EXTENSION_NAME,
             overworld: OVERWORLD_URL,
-            revision: 'region-editor-v6-spawn-cleanup',
+            revision: 'region-editor-v7-perspective-calibration',
         });
         return;
     }
@@ -111,6 +111,24 @@ async function handleBridgeRequest(request, response) {
         const result = await Editor.Message.request('scene', 'execute-scene-script', {
             name: EXTENSION_NAME,
             method: 'buildNamedTransitions',
+            args: [],
+        });
+        await Editor.Message.request('asset-db', 'refresh-asset', 'db://assets/resources/locations');
+        await Editor.Message.request('scene', 'save-scene');
+        sendJson(response, 200, { ok: true, result });
+        return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/ensure-perspective') {
+        const sceneId = url.searchParams.get('sceneId') || 'main-road';
+        const result = await Editor.Message.request('scene', 'execute-scene-script', {
+            name: EXTENSION_NAME,
+            method: 'ensurePerspectiveCalibration',
+            args: [sceneId],
+        });
+        await Editor.Message.request('scene', 'execute-scene-script', {
+            name: EXTENSION_NAME,
+            method: 'exportRegions',
             args: [],
         });
         await Editor.Message.request('asset-db', 'refresh-asset', 'db://assets/resources/locations');

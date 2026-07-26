@@ -34,6 +34,11 @@ export type PerspectiveSceneConfig = {
     nearY: number;
     farScale: number;
     nearScale: number;
+    perspective?: {
+        nearY: number;
+        nearVisualHeight: number;
+        horizonY: number;
+    };
 };
 
 export type LocationSceneConfig = {

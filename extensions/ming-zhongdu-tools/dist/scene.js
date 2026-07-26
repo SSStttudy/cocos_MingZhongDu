@@ -6,6 +6,8 @@ const path = require('path');
 const REGION_TYPES = ['Walkable', 'Obstacle', 'Interaction', 'Transition', 'Occlusion', 'Spawn'];
 const REFERENCE_WIDTH = 1365;
 const REFERENCE_HEIGHT = 1024;
+const PERSPECTIVE_NEAR_NAME = 'PerspectiveNear';
+const PERSPECTIVE_HORIZON_NAME = 'PerspectiveHorizon';
 const SCENE_FILE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 const SCENE_ORDER = [
     'entrance-gate',
@@ -127,6 +129,84 @@ function ensureSceneGroup(sceneId) {
     }
     ensureConfiguredSpawns(group, id);
     return group;
+}
+
+function drawPerspectiveNear(node) {
+    const { UITransform, Graphics, Color } = getEngine();
+    const transform = node.getComponent(UITransform) || node.addComponent(UITransform);
+    transform.setContentSize(200, 400);
+    const graphics = node.getComponent(Graphics) || node.addComponent(Graphics);
+    graphics.clear();
+    graphics.fillColor = new Color(42, 180, 125, 42);
+    graphics.strokeColor = new Color(42, 180, 125, 255);
+    graphics.lineWidth = 4;
+    graphics.rect(-100, -200, 200, 400);
+    graphics.fill();
+    graphics.stroke();
+}
+
+function drawPerspectiveHorizon(node) {
+    const { UITransform, Graphics, Color } = getEngine();
+    const transform = node.getComponent(UITransform) || node.addComponent(UITransform);
+    transform.setContentSize(REFERENCE_WIDTH, 24);
+    const graphics = node.getComponent(Graphics) || node.addComponent(Graphics);
+    graphics.clear();
+    graphics.strokeColor = new Color(229, 72, 72, 255);
+    graphics.lineWidth = 4;
+    graphics.moveTo(-REFERENCE_WIDTH * 0.5, 0);
+    graphics.lineTo(REFERENCE_WIDTH * 0.5, 0);
+    graphics.stroke();
+}
+
+function readPerspectiveCalibration(group) {
+    const { UITransform } = getEngine();
+    const near = group.getChildByName(PERSPECTIVE_NEAR_NAME);
+    const horizon = group.getChildByName(PERSPECTIVE_HORIZON_NAME);
+    if (!near || !horizon) return null;
+
+    near.setPosition(0, near.position.y, 0);
+    horizon.setPosition(0, horizon.position.y, 0);
+    const transform = near.getComponent(UITransform);
+    if (!transform) return null;
+    const nearVisualHeight = transform.contentSize.height * Math.abs(near.scale.y);
+    const lowerAnchor = near.scale.y >= 0
+        ? transform.anchorPoint.y
+        : 1 - transform.anchorPoint.y;
+    return {
+        nearY: Number((near.position.y - nearVisualHeight * lowerAnchor).toFixed(3)),
+        nearVisualHeight: Number(nearVisualHeight.toFixed(3)),
+        horizonY: Number(horizon.position.y.toFixed(3)),
+    };
+}
+
+function ensurePerspectiveCalibration(sceneId) {
+    const { Node, Layers } = getEngine();
+    const group = ensureSceneGroup(sceneId);
+    let near = group.getChildByName(PERSPECTIVE_NEAR_NAME);
+    if (!near) {
+        near = new Node(PERSPECTIVE_NEAR_NAME);
+        near.layer = Layers.Enum.UI_2D;
+        near.setPosition(0, -280, 0);
+        group.addChild(near);
+    }
+    drawPerspectiveNear(near);
+
+    let horizon = group.getChildByName(PERSPECTIVE_HORIZON_NAME);
+    if (!horizon) {
+        horizon = new Node(PERSPECTIVE_HORIZON_NAME);
+        horizon.layer = Layers.Enum.UI_2D;
+        horizon.setPosition(0, 80, 0);
+        group.addChild(horizon);
+    }
+    drawPerspectiveHorizon(horizon);
+    return {
+        sceneId: getCurrentSceneId(sceneId),
+        names: {
+            near: PERSPECTIVE_NEAR_NAME,
+            horizon: PERSPECTIVE_HORIZON_NAME,
+        },
+        ...readPerspectiveCalibration(group),
+    };
 }
 
 function getRegionNodes(sceneId) {
@@ -495,7 +575,8 @@ function exportRegions() {
     for (const group of root.children.filter((child) => child.name.startsWith('Scene-'))) {
         const sceneId = group.name.slice('Scene-'.length);
         const regions = normalizeRegionNodes(group).map(toExportRegion);
-        document.scenes[sceneId] = { regions };
+        const perspective = readPerspectiveCalibration(group);
+        document.scenes[sceneId] = perspective ? { regions, perspective } : { regions };
         counts[sceneId] = regions.length;
     }
     fs.writeFileSync(outputPath, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
@@ -537,6 +618,7 @@ exports.methods = {
         return targets;
     },
     setPreviewScene,
+    ensurePerspectiveCalibration,
     createRegularRegion,
     cleanupObsoleteSpawns,
     buildNamedTransitions,

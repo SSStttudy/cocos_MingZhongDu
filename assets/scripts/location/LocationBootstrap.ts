@@ -34,6 +34,7 @@ import {
     LocationInteractionContext,
     LocationInteractionRegistry,
 } from './LocationInteractionRegistry';
+import { DirectionalWalkAnimator } from '../player/DirectionalWalkAnimator';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -79,16 +80,21 @@ export class LocationBootstrap extends Component {
     @property({ type: JsonAsset, tooltip: '区域编辑器导出的 regions.json' })
     regionData: JsonAsset | null = null;
 
-    private readonly moveSpeed = 230;
+    private readonly defaultMoveSpeed = 230;
     private readonly playerRadius = 18;
     private readonly joystickRadius = 68;
+    private readonly exportedCharacterHeight = 440;
+    private readonly exportedCanvasHeight = 512;
+    private readonly exportedCanvasAspect = 384 / 512;
 
     private config!: LocationSceneConfig;
     private sceneConfig!: PerspectiveSceneConfig;
     private currentSceneId = '';
     private playerPosition = new Vec2();
     private world!: Node;
+    private playerShadow!: Node;
     private player!: Node;
+    private playerAnimator!: DirectionalWalkAnimator;
     private joystick!: Node;
     private joystickKnob!: Node;
     private titleLabel!: Label;
@@ -111,13 +117,28 @@ export class LocationBootstrap extends Component {
     }>>();
     private activeInteractionIds = new Set<string>();
     private spawnPoints = new Map<string, Map<string, Vec2>>();
+    private perspectiveSamples: Array<{ y: number; visualHeight: number }> = [];
+    private perspectiveProjection: {
+        nearY: number;
+        nearVisualHeight: number;
+        horizonY: number;
+    } | null = null;
+    private referenceVisualHeight = 139;
+    private cameraZoom = 1;
+    private cameraPosition = new Vec2();
+    private cameraInitialized = false;
 
     onLoad(): void {
         this.config = getLocationConfig(this.locationId);
         this.applyExportedRegionData();
+        const locationEntry = EDITOR
+            ? null
+            : LocationTransitionState.consumeLocationEntry(this.locationId);
         this.currentSceneId = EDITOR && this.config.scenes[this.previewSceneId]
             ? this.previewSceneId
-            : this.config.initialSceneId;
+            : locationEntry && this.config.scenes[locationEntry.sceneId]
+                ? locationEntry.sceneId
+                : this.config.initialSceneId;
         this.sceneConfig = this.config.scenes[this.currentSceneId];
         if (EDITOR) {
             this.renderEditorPreview();
@@ -129,7 +150,10 @@ export class LocationBootstrap extends Component {
         // RegionEditor 和碰撞轮廓只属于制作阶段，正式预览/微信运行不渲染。
         this.showDebugRegions = false;
 
-        this.renderRuntimeScene(this.currentSceneId, this.sceneConfig.playerStart);
+        const entrySpawn = locationEntry
+            ? this.spawnPoints.get(this.currentSceneId)?.get(locationEntry.spawnId)
+            : undefined;
+        this.renderRuntimeScene(this.currentSceneId, entrySpawn ?? this.sceneConfig.playerStart);
         this.createHud();
         this.createJoystick();
         this.bindInput();
@@ -155,7 +179,7 @@ export class LocationBootstrap extends Component {
         }
         this.transitionCooldown = Math.max(0, this.transitionCooldown - deltaTime);
         this.updateMovement(deltaTime);
-        this.updateCamera();
+        this.updateCamera(deltaTime);
         this.layoutUi();
     }
 
@@ -186,6 +210,9 @@ export class LocationBootstrap extends Component {
     private renderRuntimeScene(sceneId: string, spawn?: Vec2): void {
         this.currentSceneId = sceneId;
         this.sceneConfig = this.config.scenes[sceneId];
+        this.capturePlayerPerspectiveCalibration();
+        this.cameraZoom = this.getTargetCameraZoom();
+        this.cameraInitialized = false;
         this.activeInteractionIds.clear();
         this.playerPosition.set(spawn ?? this.sceneConfig.playerStart);
         const calibration = this.node.getChildByName('PerspectiveCalibration');
@@ -206,16 +233,26 @@ export class LocationBootstrap extends Component {
         behindPlayer.addComponent(UITransform).setContentSize(this.sceneConfig.worldSize);
         this.world.addChild(behindPlayer);
 
+        this.playerShadow = new Node('PlayerShadow');
+        this.playerShadow.layer = Layers.Enum.UI_2D;
+        this.playerShadow.addComponent(UITransform).setContentSize(124, 34);
+        const shadow = this.playerShadow.addComponent(Graphics);
+        shadow.fillColor = new Color(28, 24, 20, 72);
+        shadow.ellipse(0, 2, 58, 13);
+        shadow.fill();
+        this.world.addChild(this.playerShadow);
+
         this.player = new Node('Player');
         this.player.layer = Layers.Enum.UI_2D;
-        this.player.addComponent(UITransform).setContentSize(this.playerRadius * 2, this.playerRadius * 2);
-        const graphics = this.player.addComponent(Graphics);
-        graphics.fillColor = new Color(88, 70, 181, 255);
-        graphics.strokeColor = new Color(255, 247, 215, 255);
-        graphics.lineWidth = 4;
-        graphics.circle(0, 0, this.playerRadius);
-        graphics.fill();
-        graphics.stroke();
+        this.player.addComponent(UITransform);
+        this.player.addComponent(Sprite);
+        this.playerAnimator = this.player.addComponent(DirectionalWalkAnimator);
+        const canvasHeight = this.referenceVisualHeight
+            * this.exportedCanvasHeight / this.exportedCharacterHeight;
+        this.playerAnimator.setDisplaySize(
+            canvasHeight * this.exportedCanvasAspect,
+            canvasHeight,
+        );
         this.world.addChild(this.player);
 
         const foreground = new Node('ForegroundOcclusion');
@@ -464,7 +501,13 @@ export class LocationBootstrap extends Component {
         const length = delta.length();
         if (length > this.joystickRadius) delta.multiplyScalar(this.joystickRadius / length);
         this.joystickKnob.setPosition(delta.x, delta.y, 0);
-        this.joystickInput.set(delta.x / this.joystickRadius, delta.y / this.joystickRadius);
+        let inputX = delta.x / this.joystickRadius;
+        let inputY = delta.y / this.joystickRadius;
+        // Small finger wobble while aiming horizontally should not alter depth,
+        // scale, or movement speed.
+        if (Math.abs(inputX) > 0.35 && Math.abs(inputY) < 0.22) inputY = 0;
+        if (Math.abs(inputY) > 0.35 && Math.abs(inputX) < 0.22) inputX = 0;
+        this.joystickInput.set(inputX, inputY);
     }
 
     private updateMovement(deltaTime: number): void {
@@ -473,13 +516,22 @@ export class LocationBootstrap extends Component {
             this.keyboardInput.y + this.joystickInput.y,
         );
         if (this.moveInput.lengthSqr() > 1) this.moveInput.normalize();
-        if (this.moveInput.lengthSqr() < 0.001) return;
+        if (this.moveInput.lengthSqr() < 0.001) {
+            this.playerAnimator?.setMovement(this.moveInput, false);
+            return;
+        }
 
-        const step = this.moveInput.clone().multiplyScalar(this.moveSpeed * deltaTime);
+        const previousPosition = this.playerPosition.clone();
+        const perspectiveScale = this.getPerspectiveScale(this.playerPosition.y);
+        const step = this.moveInput.clone().multiplyScalar(
+            this.defaultMoveSpeed * perspectiveScale * deltaTime,
+        );
         const nextX = new Vec2(this.playerPosition.x + step.x, this.playerPosition.y);
         if (this.canStandAt(nextX)) this.playerPosition.x = nextX.x;
         const nextY = new Vec2(this.playerPosition.x, this.playerPosition.y + step.y);
         if (this.canStandAt(nextY)) this.playerPosition.y = nextY.y;
+        const moved = Vec2.distance(previousPosition, this.playerPosition) > 0.01;
+        this.playerAnimator?.setMovement(this.moveInput, moved);
         this.updatePlayerVisual();
         this.checkInteractions();
         this.checkTransitions();
@@ -517,6 +569,21 @@ export class LocationBootstrap extends Component {
         for (const sceneId of Object.keys(document.scenes)) {
             const sceneConfig = this.config.scenes[sceneId];
             if (!sceneConfig) continue;
+            const exportedPerspective = document.scenes[sceneId]?.perspective;
+            if (exportedPerspective) {
+                const nearY = Number(exportedPerspective.nearY);
+                const nearVisualHeight = Number(exportedPerspective.nearVisualHeight);
+                const horizonY = Number(exportedPerspective.horizonY);
+                if (
+                    Number.isFinite(nearY)
+                    && Number.isFinite(nearVisualHeight)
+                    && nearVisualHeight > 0
+                    && Number.isFinite(horizonY)
+                    && horizonY > nearY
+                ) {
+                    sceneConfig.perspective = { nearY, nearVisualHeight, horizonY };
+                }
+            }
             const regions = (document.scenes[sceneId]?.regions ?? []).filter((region: any) => region.enabled !== false);
             const toWorld = (point: any) => new Vec2(
                 (Number(point.x) - 0.5) * sceneConfig.worldSize.width,
@@ -559,6 +626,9 @@ export class LocationBootstrap extends Component {
                 .filter((region: any) => Number(region.type) === 3)
                 .map((region: any) => {
                     const existing = existingTransitions.get(region.id);
+                    const namedOverworldEntry = /^\d+(?:-\d+)?-(?:north|south|east|west|northeast|northwest|southeast|southwest)-\d{2}$/.test(region.id)
+                        ? `location-${region.id}`
+                        : undefined;
                     return {
                         id: region.id,
                         title: existing?.title ?? region.id,
@@ -566,7 +636,9 @@ export class LocationBootstrap extends Component {
                         targetSceneId: region.targetSceneId || existing?.targetSceneId,
                         targetSpawnId: region.targetSpawnId || existing?.targetSpawnId,
                         targetSpawn: existing?.targetSpawn,
-                        overworldEntryId: region.overworldEntryId || existing?.overworldEntryId,
+                        overworldEntryId: region.overworldEntryId
+                            || existing?.overworldEntryId
+                            || namedOverworldEntry,
                     };
                 });
             if (exportedTransitions.length > 0) sceneConfig.transitions = exportedTransitions;
@@ -658,20 +730,154 @@ export class LocationBootstrap extends Component {
 
     private updatePlayerVisual(): void {
         if (!this.player) return;
-        const range = this.sceneConfig.nearY - this.sceneConfig.farY;
-        const t = range === 0 ? 1 : Math.max(0, Math.min(1, (this.playerPosition.y - this.sceneConfig.farY) / range));
-        const scale = this.sceneConfig.farScale + (this.sceneConfig.nearScale - this.sceneConfig.farScale) * t;
+        const scale = this.getPerspectiveScale(this.playerPosition.y);
+        this.playerShadow.setPosition(this.playerPosition.x, this.playerPosition.y + 2, 0);
+        this.playerShadow.setScale(scale, scale, 1);
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
         this.player.setScale(scale, scale, 1);
     }
 
-    private updateCamera(): void {
+    private capturePlayerPerspectiveCalibration(): void {
+        this.referenceVisualHeight = 139;
+        this.perspectiveProjection = this.sceneConfig.perspective ?? null;
+        if (this.perspectiveProjection) {
+            this.referenceVisualHeight = this.perspectiveProjection.nearVisualHeight;
+            this.perspectiveSamples = [];
+            return;
+        }
+
+        this.perspectiveSamples = this.node.children
+            .filter((child) => child.name.startsWith('SpriteSplash'))
+            .map((child) => {
+                const transform = child.getComponent(UITransform);
+                const visualHeight = transform
+                    ? transform.contentSize.height * Math.abs(child.scale.y)
+                    : 0;
+                const bottomOffset = transform
+                    ? visualHeight * (child.scale.y >= 0
+                        ? transform.anchorPoint.y
+                        : 1 - transform.anchorPoint.y)
+                    : 0;
+                child.active = false;
+                // SpriteSplash is placed as a full-height person ruler. Its
+                // bottom edge is the foot/depth coordinate; the node position
+                // itself is only the ruler's anchor (normally its center).
+                return {
+                    y: child.position.y - bottomOffset,
+                    visualHeight,
+                };
+            })
+            .filter((sample) => sample.visualHeight > 0)
+            .sort((a, b) => b.y - a.y);
+
+        if (this.perspectiveSamples.length >= 2) {
+            this.referenceVisualHeight = Math.max(
+                ...this.perspectiveSamples.map((sample) => sample.visualHeight),
+            );
+        }
+    }
+
+    private getPerspectiveScale(y: number): number {
+        return this.getPerspectiveVisualHeight(y) / this.referenceVisualHeight;
+    }
+
+    private getPerspectiveVisualHeight(y: number): number {
+        if (this.perspectiveProjection) {
+            const { nearY, nearVisualHeight, horizonY } = this.perspectiveProjection;
+            const denominator = horizonY - nearY;
+            const projectedHeight = denominator <= 0
+                ? nearVisualHeight
+                : nearVisualHeight * (horizonY - y) / denominator;
+            // At and beyond the visual horizon the character remains barely
+            // visible and movable instead of becoming exactly zero-sized.
+            return Math.max(nearVisualHeight * 0.04, projectedHeight);
+        }
+
+        if (this.perspectiveSamples.length < 2) {
+            const range = this.sceneConfig.nearY - this.sceneConfig.farY;
+            const t = range === 0
+                ? 1
+                : Math.max(0, Math.min(1, (y - this.sceneConfig.farY) / range));
+            const scale = this.sceneConfig.farScale
+                + (this.sceneConfig.nearScale - this.sceneConfig.farScale) * t;
+            return this.referenceVisualHeight * scale;
+        }
+
+        const farthest = this.perspectiveSamples[0];
+        const nearest = this.perspectiveSamples[this.perspectiveSamples.length - 1];
+        if (y >= farthest.y) return farthest.visualHeight;
+        if (y <= nearest.y) {
+            // The closest SpriteSplash is a near-field calibration point, not
+            // the end of the walkable foreground. Continue scaling toward the
+            // configured front edge instead of clamping the whole foreground.
+            const foregroundY = Math.min(this.sceneConfig.nearY, nearest.y - 1);
+            const range = nearest.y - foregroundY;
+            const t = range <= 0
+                ? 0
+                : Math.max(0, Math.min(1, (nearest.y - y) / range));
+            return nearest.visualHeight * (1 + 0.5 * t);
+        }
+
+        for (let index = 0; index < this.perspectiveSamples.length - 1; index += 1) {
+            const far = this.perspectiveSamples[index];
+            const near = this.perspectiveSamples[index + 1];
+            if (y > far.y || y < near.y) continue;
+            const range = far.y - near.y;
+            const t = range <= 0 ? 0 : (far.y - y) / range;
+            const visualHeight = far.visualHeight
+                + (near.visualHeight - far.visualHeight) * t;
+            return visualHeight;
+        }
+        return this.referenceVisualHeight;
+    }
+
+    private getTargetCameraZoom(): number {
+        const perspectiveScale = this.getPerspectiveScale(this.playerPosition.y);
+        const distanceFactor = Math.max(0, Math.min(1, 1 - perspectiveScale));
+        return 1 + distanceFactor * 0.35;
+    }
+
+    private updateCamera(deltaTime = 1 / 60): void {
         const visible = view.getVisibleSize();
-        const maxX = Math.max(0, (this.sceneConfig.worldSize.width - visible.width) * 0.5);
-        const maxY = Math.max(0, (this.sceneConfig.worldSize.height - visible.height) * 0.5);
-        const x = -Math.max(-maxX, Math.min(maxX, this.playerPosition.x));
-        const y = -Math.max(-maxY, Math.min(maxY, this.playerPosition.y));
-        this.world.setPosition(x, y, 0);
+        const targetZoom = this.getTargetCameraZoom();
+        const zoomSmoothing = 1 - Math.exp(-4.5 * deltaTime);
+        this.cameraZoom += (targetZoom - this.cameraZoom) * zoomSmoothing;
+        this.world.setScale(this.cameraZoom, this.cameraZoom, 1);
+
+        const maxX = Math.max(
+            0,
+            (this.sceneConfig.worldSize.width * this.cameraZoom - visible.width) * 0.5,
+        );
+        const maxY = Math.max(
+            0,
+            (this.sceneConfig.worldSize.height * this.cameraZoom - visible.height) * 0.5,
+        );
+        const desiredX = -this.playerPosition.x * this.cameraZoom;
+        const visualHeight = this.getPerspectiveVisualHeight(this.playerPosition.y);
+        // Keep the character's feet at one stable screen anchor. Only move the
+        // anchor lower when a very large foreground character would otherwise
+        // clip at the top; this avoids the previous competing Y offsets.
+        const normalFootAnchorY = -visible.height * 0.18;
+        const highestSafeFootAnchorY = visible.height * 0.5
+            - 36
+            - visualHeight * this.cameraZoom;
+        const footAnchorY = Math.min(
+            normalFootAnchorY,
+            highestSafeFootAnchorY,
+        );
+        const desiredY = footAnchorY - this.playerPosition.y * this.cameraZoom;
+        const targetX = Math.max(-maxX, Math.min(maxX, desiredX));
+        const targetY = Math.max(-maxY, Math.min(maxY, desiredY));
+
+        if (!this.cameraInitialized) {
+            this.cameraPosition.set(targetX, targetY);
+            this.cameraInitialized = true;
+        } else {
+            const positionSmoothing = 1 - Math.exp(-7 * deltaTime);
+            this.cameraPosition.x += (targetX - this.cameraPosition.x) * positionSmoothing;
+            this.cameraPosition.y += (targetY - this.cameraPosition.y) * positionSmoothing;
+        }
+        this.world.setPosition(this.cameraPosition.x, this.cameraPosition.y, 0);
     }
 
     private toggleRestoredMode(): void {

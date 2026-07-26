@@ -1,0 +1,110 @@
+{
+  "frame_count_per_direction": 8,
+  "directions": [
+    {
+      "direction": "down",
+      "source": "D:\\临时\\vidu-video-3394994487104817.mp4",
+      "fps": 24.0,
+      "cycle_start_frame": 4,
+      "cycle_period_frames": 32,
+      "source_frame_indices": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        28,
+        32
+      ],
+      "output_frame_duration_seconds": 0.16666666666666666,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ]
+    },
+    {
+      "direction": "up",
+      "source": "D:\\临时\\vidu-video-3395000262077443.mp4",
+      "fps": 24.0,
+      "cycle_start_frame": 15,
+      "cycle_period_frames": 32,
+      "source_frame_indices": [
+        15,
+        19,
+        23,
+        27,
+        31,
+        35,
+        39,
+        43
+      ],
+      "output_frame_duration_seconds": 0.16666666666666666,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ]
+    },
+    {
+      "direction": "right",
+      "source": "D:\\临时\\vidu-video-3394999792087098.mp4",
+      "fps": 24.0,
+      "cycle_start_frame": 13,
+      "cycle_period_frames": 32,
+      "source_frame_indices": [
+        13,
+        17,
+        21,
+        25,
+        29,
+        33,
+        37,
+        41
+      ],
+      "output_frame_duration_seconds": 0.16666666666666666,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ]
+    },
+    {
+      "direction": "left",
+      "source": "horizontal mirror of right",
+      "fps": 24.0,
+      "cycle_start_frame": 13,
+      "cycle_period_frames": 32,
+      "source_frame_indices": [
+        13,
+        17,
+        21,
+        25,
+        29,
+        33,
+        37,
+        41
+      ],
+      "output_frame_duration_seconds": 0.16666666666666666,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ],
+      "mirrored_from": "right"
+    }
+  ]
+}

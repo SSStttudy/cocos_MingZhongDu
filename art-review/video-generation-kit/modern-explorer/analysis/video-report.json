@@ -1,0 +1,83 @@
+[
+  {
+    "source": "D:\\临时\\vidu-video-3394994487104817.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": 24.0,
+    "frame_count": 121,
+    "duration": 5.041666666666667,
+    "contact_sheet": "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817-contact-sheet.jpg",
+    "sample_frames": [
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\00-frame-0000.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\01-frame-0008.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\02-frame-0016.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\03-frame-0024.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\04-frame-0032.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\05-frame-0040.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\06-frame-0048.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\07-frame-0056.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\08-frame-0064.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\09-frame-0072.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\10-frame-0080.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\11-frame-0088.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\12-frame-0096.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\13-frame-0104.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\14-frame-0112.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394994487104817\\15-frame-0120.png"
+    ]
+  },
+  {
+    "source": "D:\\临时\\vidu-video-3394999792087098.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": 24.0,
+    "frame_count": 121,
+    "duration": 5.041666666666667,
+    "contact_sheet": "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098-contact-sheet.jpg",
+    "sample_frames": [
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\00-frame-0000.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\01-frame-0008.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\02-frame-0016.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\03-frame-0024.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\04-frame-0032.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\05-frame-0040.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\06-frame-0048.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\07-frame-0056.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\08-frame-0064.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\09-frame-0072.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\10-frame-0080.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\11-frame-0088.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\12-frame-0096.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\13-frame-0104.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\14-frame-0112.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3394999792087098\\15-frame-0120.png"
+    ]
+  },
+  {
+    "source": "D:\\临时\\vidu-video-3395000262077443.mp4",
+    "width": 1920,
+    "height": 1080,
+    "fps": 24.0,
+    "frame_count": 121,
+    "duration": 5.041666666666667,
+    "contact_sheet": "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443-contact-sheet.jpg",
+    "sample_frames": [
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\00-frame-0000.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\01-frame-0008.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\02-frame-0016.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\03-frame-0024.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\04-frame-0032.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\05-frame-0040.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\06-frame-0048.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\07-frame-0056.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\08-frame-0064.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\09-frame-0072.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\10-frame-0080.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\11-frame-0088.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\12-frame-0096.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\13-frame-0104.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\14-frame-0112.png",
+      "D:\\cocos\\proj\\NewProject\\art-review\\video-generation-kit\\modern-explorer\\analysis\\vidu-video-3395000262077443\\15-frame-0120.png"
+    ]
+  }
+]

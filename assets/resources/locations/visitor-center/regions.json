@@ -252,7 +252,12 @@
             }
           ]
         }
-      ]
+      ],
+      "perspective": {
+        "nearY": -480,
+        "nearVisualHeight": 400,
+        "horizonY": 92.701
+      }
     },
     "interior": {
       "regions": [
@@ -388,7 +393,12 @@
             }
           ]
         }
-      ]
+      ],
+      "perspective": {
+        "nearY": -481.814,
+        "nearVisualHeight": 400,
+        "horizonY": 80
+      }
     },
     "entrance-gate": {
       "regions": [
@@ -484,23 +494,92 @@
           "points": [
             {
               "x": 0.855014,
-              "y": 0.580511
+              "y": 0.583221
             },
             {
               "x": 0.837077,
-              "y": 0.537017
+              "y": 0.535377
             },
             {
               "x": 0.785316,
-              "y": 0.531778
+              "y": 0.529615
             },
             {
               "x": 0.774553,
-              "y": 0.573451
+              "y": 0.575455
+            }
+          ]
+        },
+        {
+          "id": "1-west-01",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "location-1-west-01",
+          "points": [
+            {
+              "x": 0.001222,
+              "y": 1.002782
+            },
+            {
+              "x": 1.038388,
+              "y": 0.998046
+            },
+            {
+              "x": 1.005347,
+              "y": 0.924804
+            },
+            {
+              "x": 0.000565,
+              "y": 0.855748
+            }
+          ]
+        },
+        {
+          "id": "spawn-1-west-01",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.460382,
+              "y": 0.860337
+            },
+            {
+              "x": 0.473569,
+              "y": 0.842759
+            },
+            {
+              "x": 0.460382,
+              "y": 0.825181
+            },
+            {
+              "x": 0.447196,
+              "y": 0.842759
             }
           ]
         }
-      ]
+      ],
+      "perspective": {
+        "nearY": -387.324,
+        "nearVisualHeight": 400,
+        "horizonY": 14.93
+      }
     },
     "main-road": {
       "regions": [
@@ -747,24 +826,93 @@
           "overworldEntryId": "",
           "points": [
             {
-              "x": 0.605501,
-              "y": 0.529021
+              "x": 0.606234,
+              "y": 0.528045
             },
             {
-              "x": 0.623977,
-              "y": 0.514058
+              "x": 0.62471,
+              "y": 0.513081
             },
             {
-              "x": 0.601662,
-              "y": 0.511603
+              "x": 0.602395,
+              "y": 0.510626
             },
             {
-              "x": 0.58404,
-              "y": 0.523155
+              "x": 0.584772,
+              "y": 0.522179
+            }
+          ]
+        },
+        {
+          "id": "spawn-1-east-01",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.654156,
+              "y": 0.545866
+            },
+            {
+              "x": 0.667343,
+              "y": 0.528288
+            },
+            {
+              "x": 0.654156,
+              "y": 0.51071
+            },
+            {
+              "x": 0.640969,
+              "y": 0.528288
+            }
+          ]
+        },
+        {
+          "id": "1-east-01",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "location-1-east-01",
+          "points": [
+            {
+              "x": 0.629778,
+              "y": 0.502853
+            },
+            {
+              "x": 0.681228,
+              "y": 0.504296
+            },
+            {
+              "x": 0.670254,
+              "y": 0.485246
+            },
+            {
+              "x": 0.643316,
+              "y": 0.481657
             }
           ]
         }
-      ]
+      ],
+      "perspective": {
+        "nearY": -383.208,
+        "nearVisualHeight": 400,
+        "horizonY": 18.545
+      }
     },
     "cafe-garden": {
       "regions": [
@@ -944,7 +1092,12 @@
             }
           ]
         }
-      ]
+      ],
+      "perspective": {
+        "nearY": -428.732,
+        "nearVisualHeight": 400,
+        "horizonY": -24.507
+      }
     },
     "leisure-plaza": {
       "regions": [
@@ -1188,7 +1341,12 @@
             }
           ]
         }
-      ]
+      ],
+      "perspective": {
+        "nearY": -407.422,
+        "nearVisualHeight": 400,
+        "horizonY": 80
+      }
     },
     "visitor-building": {
       "regions": [
@@ -1440,7 +1598,12 @@
             }
           ]
         }
-      ]
+      ],
+      "perspective": {
+        "nearY": -498.144,
+        "nearVisualHeight": 400,
+        "horizonY": 54.597
+      }
     }
   }
 }
