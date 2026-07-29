@@ -1,0 +1,25 @@
+{
+  "taskName": "wechatgame",
+  "platform": "wechatgame",
+  "name": "ming-zhongdu",
+  "buildPath": "project://build",
+  "debug": false,
+  "startScene": "7a238b31-8a2e-43af-b8c6-286f2b0912d9",
+  "scenes": [
+    {
+      "url": "db://assets/scenes/Start.scene",
+      "uuid": "7a238b31-8a2e-43af-b8c6-286f2b0912d9"
+    },
+    {
+      "url": "db://assets/scenes/Overworld.scene",
+      "uuid": "41840b3b-9df7-46d2-98de-090115e44a9f"
+    },
+    {
+      "url": "db://assets/scenes/LocationTemplate.scene",
+      "uuid": "73c39c53-1db8-49d0-9fd0-6f5f2bcd9101"
+    }
+  ],
+  "packages": {
+    "wechatgame": {}
+  }
+}

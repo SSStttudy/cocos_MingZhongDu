@@ -31,4 +31,9 @@ export class LocationTransitionState {
         this.overworldEntryId = '';
         return entryId;
     }
+
+    static resetForNewGame(): void {
+        this.overworldEntryId = '';
+        this.locationEntry = null;
+    }
 }
