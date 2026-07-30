@@ -34,6 +34,11 @@ import {
 } from './OverworldConfig';
 import { LocationTransitionState } from '../location/LocationTransitionState';
 import { DirectionalWalkAnimator } from '../player/DirectionalWalkAnimator';
+import {
+    OverworldTourEntranceContext,
+    OverworldTourGuide,
+    OverworldTourHost,
+} from '../tour/OverworldTourGuide';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -47,7 +52,7 @@ type ResolvedEntryPoint = {
 
 @ccclass('OverworldBootstrap')
 @executeInEditMode
-export class OverworldBootstrap extends Component {
+export class OverworldBootstrap extends Component implements OverworldTourHost {
     @property({ type: SpriteFrame, tooltip: '编辑器与运行时使用的大地图底图' })
     mapSpriteFrame: SpriteFrame | null = null;
 
@@ -78,6 +83,7 @@ export class OverworldBootstrap extends Component {
     private entryPoints: ResolvedEntryPoint[] = [];
     private activeEntryPoint: ResolvedEntryPoint | null = null;
     private activeEntryIds = new Set<string>();
+    private tourGuide: OverworldTourGuide | null = null;
     private lastEditorCalibrationHash = '';
     private lastCanvasWidth = 0;
     private lastCanvasHeight = 0;
@@ -97,6 +103,8 @@ export class OverworldBootstrap extends Component {
         this.createHud();
         this.createJoystick();
         this.createEntryPanel();
+        this.tourGuide = this.node.addComponent(OverworldTourGuide);
+        this.tourGuide.initialize(this);
         this.bindInput();
         this.layoutScreenUi(true);
     }
@@ -796,6 +804,15 @@ export class OverworldBootstrap extends Component {
     }
 
     private traverseLocation(source: ResolvedEntryPoint): void {
+        const tourSource: OverworldTourEntranceContext = {
+            id: source.id,
+            entranceId: source.entrance.id,
+            title: this.getEntranceTitle(source.entrance),
+            position: source.position.clone(),
+            triggerRadius: source.triggerRadius,
+        };
+        if (this.tourGuide?.handleEntrance(tourSource)) return;
+
         if (source.entrance.id === 'location-1') {
             const localEntryId = source.id.replace(/^location-/, '');
             const entersFromWest = /-west-\d+$/.test(source.id);
@@ -1124,6 +1141,163 @@ export class OverworldBootstrap extends Component {
 
     private getEntranceRadius(entrance: OverworldEntrance): number {
         return this.entranceRadii.get(entrance.id) ?? entrance.triggerRadius;
+    }
+
+    getTourWorld(): Node {
+        return this.world;
+    }
+
+    getTourPlayerPosition(): Vec2 {
+        return this.playerPosition.clone();
+    }
+
+    setTourPaused(paused: boolean): void {
+        this.pausedByEntrance = paused;
+        if (paused) {
+            this.joystickInput.set(0, 0);
+            this.keyboardInput.set(0, 0);
+            this.joystickKnob?.setPosition(0, 0, 0);
+            this.playerAnimator?.stop();
+        }
+    }
+
+    finishTourCheckpoint(source: OverworldTourEntranceContext, targetEntranceId: string): void {
+        let nearestRoute: OverworldRouteSegment | null = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        for (const route of this.routeSegments) {
+            const distance = Vec2.distance(source.position, this.closestPointOnSegment(source.position, route));
+            if (distance < nearestDistance) {
+                nearestRoute = route;
+                nearestDistance = distance;
+            }
+        }
+        if (!nearestRoute) return;
+
+        const tangent = nearestRoute.end.clone().subtract(nearestRoute.start);
+        if (tangent.lengthSqr() < 0.001) return;
+        tangent.normalize();
+        const offset = source.triggerRadius + this.playerRadius + 20;
+        const forward = source.position.clone().add(tangent.clone().multiplyScalar(offset));
+        const backward = source.position.clone().subtract(tangent.clone().multiplyScalar(offset));
+        const targetEntrance = OVERWORLD_ENTRANCES.find((entrance) => entrance.id === targetEntranceId);
+        const target = targetEntrance
+            ? this.getEntrancePosition(targetEntrance)
+            : this.playerPosition.clone().add(tangent);
+        this.playerPosition.set(
+            Vec2.distance(forward, target) <= Vec2.distance(backward, target) ? forward : backward,
+        );
+        this.snapPlayerToWalkableRoute();
+        this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
+        this.playerShadow.setPosition(this.playerPosition.x, this.playerPosition.y + 1, 0);
+        this.activeEntryIds.clear();
+    }
+
+    getTourPathToEntrance(entranceId: string): Vec2[] {
+        const targets = this.entryPoints.filter((point) => point.entrance.id === entranceId);
+        if (targets.length === 0 || this.routeSegments.length === 0) return [];
+        const target = targets.reduce((best, candidate) => (
+            Vec2.distance(candidate.position, this.playerPosition)
+                < Vec2.distance(best.position, this.playerPosition)
+                ? candidate
+                : best
+        ));
+        const startRoute = this.findNearestRoute(this.playerPosition);
+        const targetRoute = this.findNearestRoute(target.position);
+        if (!startRoute || !targetRoute) return [this.playerPosition.clone(), target.position.clone()];
+
+        const startProjection = this.closestPointOnSegment(this.playerPosition, startRoute);
+        const targetProjection = this.closestPointOnSegment(target.position, targetRoute);
+        const graph = new Map<string, Array<{ id: string; weight: number }>>();
+        const positions = new Map<string, Vec2>();
+        const connect = (a: string, b: string, weight: number) => {
+            if (!graph.has(a)) graph.set(a, []);
+            if (!graph.has(b)) graph.set(b, []);
+            graph.get(a)!.push({ id: b, weight });
+            graph.get(b)!.push({ id: a, weight });
+        };
+        for (const point of OVERWORLD_ROUTE_POINTS) {
+            positions.set(
+                point.id,
+                (this.routePointPositions.get(point.id) ?? point.position).clone(),
+            );
+        }
+        for (const edge of OVERWORLD_ROUTE_EDGES) {
+            const start = positions.get(edge.from);
+            const end = positions.get(edge.to);
+            if (start && end) connect(edge.from, edge.to, Vec2.distance(start, end));
+        }
+        positions.set('__tour-start', startProjection);
+        positions.set('__tour-target', targetProjection);
+        const startEdge = OVERWORLD_ROUTE_EDGES.find((edge) => edge.id === startRoute.id);
+        const targetEdge = OVERWORLD_ROUTE_EDGES.find((edge) => edge.id === targetRoute.id);
+        if (startEdge) {
+            connect('__tour-start', startEdge.from, Vec2.distance(startProjection, positions.get(startEdge.from)!));
+            connect('__tour-start', startEdge.to, Vec2.distance(startProjection, positions.get(startEdge.to)!));
+        }
+        if (targetEdge) {
+            connect('__tour-target', targetEdge.from, Vec2.distance(targetProjection, positions.get(targetEdge.from)!));
+            connect('__tour-target', targetEdge.to, Vec2.distance(targetProjection, positions.get(targetEdge.to)!));
+        }
+        if (startRoute.id === targetRoute.id) {
+            connect('__tour-start', '__tour-target', Vec2.distance(startProjection, targetProjection));
+        }
+
+        const distances = new Map<string, number>([['__tour-start', 0]]);
+        const previous = new Map<string, string>();
+        const pending = new Set(graph.keys());
+        while (pending.size > 0) {
+            let current = '';
+            let currentDistance = Number.POSITIVE_INFINITY;
+            for (const id of pending) {
+                const distance = distances.get(id) ?? Number.POSITIVE_INFINITY;
+                if (distance < currentDistance) {
+                    current = id;
+                    currentDistance = distance;
+                }
+            }
+            if (!current || !Number.isFinite(currentDistance)) break;
+            pending.delete(current);
+            if (current === '__tour-target') break;
+            for (const neighbor of graph.get(current) ?? []) {
+                const candidate = currentDistance + neighbor.weight;
+                if (candidate < (distances.get(neighbor.id) ?? Number.POSITIVE_INFINITY)) {
+                    distances.set(neighbor.id, candidate);
+                    previous.set(neighbor.id, current);
+                }
+            }
+        }
+
+        const ids: string[] = [];
+        let cursor = '__tour-target';
+        while (cursor) {
+            ids.push(cursor);
+            if (cursor === '__tour-start') break;
+            cursor = previous.get(cursor) ?? '';
+        }
+        if (ids[ids.length - 1] !== '__tour-start') {
+            return [this.playerPosition.clone(), startProjection, targetProjection, target.position.clone()];
+        }
+        ids.reverse();
+        const path = [this.playerPosition.clone()];
+        for (const id of ids) {
+            const position = positions.get(id);
+            if (position && Vec2.distance(path[path.length - 1], position) > 1) path.push(position.clone());
+        }
+        if (Vec2.distance(path[path.length - 1], target.position) > 1) path.push(target.position.clone());
+        return path;
+    }
+
+    private findNearestRoute(position: Vec2): OverworldRouteSegment | null {
+        let nearest: OverworldRouteSegment | null = null;
+        let distance = Number.POSITIVE_INFINITY;
+        for (const route of this.routeSegments) {
+            const candidate = Vec2.distance(position, this.closestPointOnSegment(position, route));
+            if (candidate < distance) {
+                nearest = route;
+                distance = candidate;
+            }
+        }
+        return nearest;
     }
 
     private clamp(value: number, min: number, max: number): number {

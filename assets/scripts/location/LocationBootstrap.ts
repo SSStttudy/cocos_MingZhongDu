@@ -35,12 +35,17 @@ import {
     LocationInteractionRegistry,
 } from './LocationInteractionRegistry';
 import { DirectionalWalkAnimator } from '../player/DirectionalWalkAnimator';
+import {
+    LocationTourGuide,
+    LocationTourHost,
+    LocationTourTarget,
+} from '../tour/LocationTourGuide';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
 @ccclass('LocationBootstrap')
 @executeInEditMode
-export class LocationBootstrap extends Component {
+export class LocationBootstrap extends Component implements LocationTourHost {
     @property({ tooltip: '地点配置 ID' })
     locationId = 'visitor-center';
 
@@ -127,6 +132,8 @@ export class LocationBootstrap extends Component {
     private cameraZoom = 1;
     private cameraPosition = new Vec2();
     private cameraInitialized = false;
+    private tourGuide: LocationTourGuide | null = null;
+    private tourPaused = false;
 
     onLoad(): void {
         this.config = getLocationConfig(this.locationId);
@@ -156,6 +163,8 @@ export class LocationBootstrap extends Component {
         this.renderRuntimeScene(this.currentSceneId, entrySpawn ?? this.sceneConfig.playerStart);
         this.createHud();
         this.createJoystick();
+        this.tourGuide = this.node.addComponent(LocationTourGuide);
+        this.tourGuide.initialize(this);
         this.bindInput();
         this.layoutUi();
     }
@@ -511,6 +520,10 @@ export class LocationBootstrap extends Component {
     }
 
     private updateMovement(deltaTime: number): void {
+        if (this.tourPaused) {
+            this.playerAnimator?.stop();
+            return;
+        }
         this.moveInput.set(
             this.keyboardInput.x + this.joystickInput.x,
             this.keyboardInput.y + this.joystickInput.y,
@@ -723,6 +736,7 @@ export class LocationBootstrap extends Component {
             return;
         }
         if (transition.overworldEntryId) {
+            this.tourGuide?.handleOverworldTransition(transition.overworldEntryId);
             LocationTransitionState.returnToOverworld(transition.overworldEntryId);
             director.loadScene('Overworld');
         }
@@ -735,6 +749,157 @@ export class LocationBootstrap extends Component {
         this.playerShadow.setScale(scale, scale, 1);
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
         this.player.setScale(scale, scale, 1);
+    }
+
+    getTourWorld(): Node {
+        return this.world;
+    }
+
+    getTourLocationId(): string {
+        return this.locationId;
+    }
+
+    getTourSceneId(): string {
+        return this.currentSceneId;
+    }
+
+    getTourPlayerPosition(): Vec2 {
+        return this.playerPosition.clone();
+    }
+
+    getTourPerspectiveScale(y: number): number {
+        return this.getPerspectiveScale(y);
+    }
+
+    getTourApproachPoint(polygon: Vec2[], distance: number): Vec2 {
+        if (polygon.length === 0) return this.playerPosition.clone();
+        const center = this.polygonCenter(polygon);
+        const boundaryPoints: Vec2[] = [];
+        for (let index = 0; index < polygon.length; index += 1) {
+            const start = polygon[index];
+            const end = polygon[(index + 1) % polygon.length];
+            boundaryPoints.push(start.clone());
+            boundaryPoints.push(new Vec2(
+                (start.x + end.x) * 0.5,
+                (start.y + end.y) * 0.5,
+            ));
+        }
+        boundaryPoints.sort((a, b) => (
+            Vec2.distance(a, this.playerPosition) - Vec2.distance(b, this.playerPosition)
+        ));
+        const offsets = [distance, distance + 28, distance + 56];
+        for (const boundary of boundaryPoints) {
+            let dx = boundary.x - center.x;
+            let dy = boundary.y - center.y;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            if (length < 0.001) {
+                dx = this.playerPosition.x - center.x;
+                dy = this.playerPosition.y - center.y;
+            }
+            const normalLength = Math.max(0.001, Math.sqrt(dx * dx + dy * dy));
+            dx /= normalLength;
+            dy /= normalLength;
+            for (const offset of offsets) {
+                const candidate = new Vec2(
+                    boundary.x + dx * offset,
+                    boundary.y + dy * offset,
+                );
+                if (this.canStandAt(candidate)) return candidate;
+            }
+        }
+        return this.playerPosition.clone();
+    }
+
+    getTourRegion(sceneId: string, regionId: string): LocationTourTarget | null {
+        const scene = this.config.scenes[sceneId];
+        if (!scene) return null;
+        const obstacle = scene.obstacles.find((item) => item.id === regionId);
+        if (obstacle) {
+            return {
+                id: obstacle.id,
+                polygon: obstacle.points.map((point) => point.clone()),
+                kind: 'interaction',
+            };
+        }
+        const interaction = (this.interactionRegions.get(sceneId) ?? [])
+            .find((item) => item.id === regionId);
+        if (interaction) {
+            return {
+                id: interaction.id,
+                polygon: interaction.points.map((point) => point.clone()),
+                kind: 'interaction',
+            };
+        }
+        const transition = scene.transitions.find((item) => item.id === regionId);
+        return transition
+            ? {
+                id: transition.id,
+                polygon: transition.polygon.map((point) => point.clone()),
+                kind: 'transition',
+            }
+            : null;
+    }
+
+    getTourTransitionToward(
+        targetSceneId?: string,
+        overworldEntryId?: string,
+    ): LocationTourTarget | null {
+        const startSceneId = this.currentSceneId;
+        const startScene = this.config.scenes[startSceneId];
+        if (!startScene) return null;
+        if (targetSceneId === startSceneId) return null;
+
+        const directWorld = overworldEntryId
+            ? startScene.transitions.find((transition) => transition.overworldEntryId === overworldEntryId)
+            : null;
+        if (directWorld) {
+            return {
+                id: directWorld.id,
+                polygon: directWorld.polygon.map((point) => point.clone()),
+                kind: 'transition',
+            };
+        }
+
+        const queue: Array<{ sceneId: string; first: LocationTransition | null }> = [
+            { sceneId: startSceneId, first: null },
+        ];
+        const visited = new Set<string>([startSceneId]);
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            const scene = this.config.scenes[current.sceneId];
+            if (!scene) continue;
+            for (const transition of scene.transitions) {
+                const first = current.first ?? transition;
+                if (overworldEntryId && transition.overworldEntryId === overworldEntryId) {
+                    return {
+                        id: first.id,
+                        polygon: first.polygon.map((point) => point.clone()),
+                        kind: 'transition',
+                    };
+                }
+                if (!transition.targetSceneId || visited.has(transition.targetSceneId)) continue;
+                if (transition.targetSceneId === targetSceneId) {
+                    return {
+                        id: first.id,
+                        polygon: first.polygon.map((point) => point.clone()),
+                        kind: 'transition',
+                    };
+                }
+                visited.add(transition.targetSceneId);
+                queue.push({ sceneId: transition.targetSceneId, first });
+            }
+        }
+        return null;
+    }
+
+    setTourPaused(paused: boolean): void {
+        this.tourPaused = paused;
+        if (paused) {
+            this.joystickInput.set(0, 0);
+            this.keyboardInput.set(0, 0);
+            this.joystickKnob?.setPosition(0, 0, 0);
+            this.playerAnimator?.stop();
+        }
     }
 
     private capturePlayerPerspectiveCalibration(): void {
