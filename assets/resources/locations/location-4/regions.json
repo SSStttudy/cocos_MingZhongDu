@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "locationId": "location-4",
+  "referenceSize": {
+    "width": 2208,
+    "height": 1024
+  },
+  "scenes": {
+    "main": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0,
+              "y": 1
+            },
+            {
+              "x": 1,
+              "y": 1
+            },
+            {
+              "x": 1.001933,
+              "y": 0.505162
+            },
+            {
+              "x": 0.641889,
+              "y": 0.491381
+            },
+            {
+              "x": 0.204647,
+              "y": 0.517979
+            },
+            {
+              "x": 0.00226,
+              "y": 0.611559
+            }
+          ]
+        },
+        {
+          "id": "spawn-overworld-west-01",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.16593,
+              "y": 0.561588
+            },
+            {
+              "x": 0.17993,
+              "y": 0.580588
+            },
+            {
+              "x": 0.16593,
+              "y": 0.599588
+            },
+            {
+              "x": 0.15193,
+              "y": 0.580588
+            }
+          ]
+        },
+        {
+          "id": "spawn-overworld-east-01",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.748741,
+              "y": 0.536875
+            },
+            {
+              "x": 0.762741,
+              "y": 0.555875
+            },
+            {
+              "x": 0.748741,
+              "y": 0.574875
+            },
+            {
+              "x": 0.734741,
+              "y": 0.555875
+            }
+          ]
+        },
+        {
+          "id": "to-overworld-west-01",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "location-4-west-01",
+          "points": [
+            {
+              "x": 0.132132,
+              "y": 0.522739
+            },
+            {
+              "x": 0.19046,
+              "y": 0.533925
+            },
+            {
+              "x": 0.068945,
+              "y": 0.589244
+            },
+            {
+              "x": 0.057562,
+              "y": 0.548697
+            }
+          ]
+        },
+        {
+          "id": "to-overworld-east-01",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "location-4-east-01",
+          "points": [
+            {
+              "x": 0.692154,
+              "y": 0.477145
+            },
+            {
+              "x": 0.969503,
+              "y": 0.49118
+            },
+            {
+              "x": 0.967178,
+              "y": 0.52252
+            },
+            {
+              "x": 0.672163,
+              "y": 0.502471
+            }
+          ]
+        },
+        {
+          "id": "obstacle-sign-flowerbed",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.003282,
+              "y": 0.675033
+            },
+            {
+              "x": 0.292338,
+              "y": 0.843667
+            },
+            {
+              "x": 0.281488,
+              "y": 1.011745
+            },
+            {
+              "x": 0.00202,
+              "y": 1.000865
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -359.184,
+        "nearVisualHeight": 400,
+        "horizonY": 60.192
+      },
+      "worldSize": {
+        "width": 2208,
+        "height": 1024
+      }
+    }
+  }
+}

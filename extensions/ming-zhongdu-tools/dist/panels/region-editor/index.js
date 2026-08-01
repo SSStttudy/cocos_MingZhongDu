@@ -19,7 +19,7 @@ module.exports = Editor.Panel.define({
     <select id="scene-select"><option value="exterior">exterior</option><option value="interior">interior</option></select>
     <h3 style="margin-top:12px">透视标定</h3>
     <button id="ensure-perspective">创建／修复当前分镜标定</button>
-    <small><code>PerspectiveNear</code> 的下边缘是最近点，矩形高度是人物高度；<code>PerspectiveHorizon</code> 是视觉终线。两个节点只需上下调整 Y。</small>
+    <small><code>PerspectiveNear</code> 的下边缘是最近点，矩形高度是人物高度；<code>PerspectiveHorizon</code> 是视觉终线。可选的 <code>PerspectiveKeep</code> 表示人物超过该 Y 后保持缩放。标定节点只需上下调整 Y。</small>
     <small>切换后，背景与区域会一起切换。每张照片分镜独立保存。</small>
   </section>
   <section>
@@ -36,7 +36,14 @@ module.exports = Editor.Panel.define({
   </section>
   <section>
     <h3>当前区域</h3>
+    <label>显示类型<select id="region-filter">
+      <option value="all">全部区域</option>
+      <option value="3">只看切景区 Transition</option>
+      <option value="5">只看出生点 Spawn</option>
+    </select></label>
     <select id="region-list" size="6"></select>
+    <button id="focus-region">在层级管理器中选中（随后可直接拖动）</button>
+    <small id="region-edit-hint">选择区域后，可拖动整个 Region 节点调整位置，也可展开节点拖动 Vertex 调整形状。</small>
     <label>区域 ID<input id="edit-id" placeholder="例如 spawn-road / obstacle-tree"></label>
     <small>统一使用小写英文与短横线；修改后会同步层级节点名称。</small>
     <label>类型<select id="edit-type">
@@ -53,8 +60,8 @@ module.exports = Editor.Panel.define({
       <label>Payload JSON<textarea id="payload">{}</textarea></label>
     </details>
     <details><summary>切景属性</summary>
-      <label>目标出生点<select id="target-spawn-ref"><option value="">请选择其他分镜的出生点</option></select></label>
-      <small>出生点已包含所属分镜；选择后会同时保存目标分镜与出生点。</small>
+      <label>目标出生点<select id="target-spawn-ref"><option value="">请选择目标出生点</option></select></label>
+      <small>列出当前地点全部分镜的出生点；选择后会同时保存目标分镜与出生点。</small>
       <label>大地图入口<input id="overworld-entry"></label>
     </details>
     <button id="apply" class="primary">应用属性并保存</button>
@@ -80,13 +87,14 @@ input, select, textarea, button { box-sizing:border-box; width:100%; min-height:
 textarea { min-height:56px; resize:vertical; font-family:monospace; } button { cursor:pointer; padding:4px 8px; }
 button.primary { background:#315f88; } button.danger { background:#783e3b; }
 .row,.button-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px; }
-#region-list { min-height:120px; } details { border-top:1px solid var(--color-normal-border); margin-top:8px; padding-top:6px; }
+#region-list { min-height:150px; } #focus-region { margin-top:6px; } details { border-top:1px solid var(--color-normal-border); margin-top:8px; padding-top:6px; }
 summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; }
 #status { white-space:pre-wrap; max-height:180px; overflow:auto; padding:8px; background:#17191b; border-radius:4px; }
 `,
     $: {
         refresh:'#refresh', scene:'#scene-select', ensurePerspective:'#ensure-perspective', newId:'#new-id', newType:'#new-type', newSides:'#new-sides', newRadius:'#new-radius', create:'#create',
-        list:'#region-list', editId:'#edit-id', editType:'#edit-type', priority:'#priority', enabled:'#enabled', handlerId:'#handler-id', prompt:'#prompt',
+        filter:'#region-filter', list:'#region-list', focusRegion:'#focus-region', regionEditHint:'#region-edit-hint',
+        editId:'#edit-id', editType:'#edit-type', priority:'#priority', enabled:'#enabled', handlerId:'#handler-id', prompt:'#prompt',
         triggerMode:'#trigger-mode', payload:'#payload', targetSpawnRef:'#target-spawn-ref', overworldEntry:'#overworld-entry',
         apply:'#apply', addVertex:'#add-vertex', removeVertex:'#remove-vertex', delete:'#delete', validate:'#validate', saveApply:'#save-apply',
         saveScene:'#save-scene', status:'#status',
@@ -119,7 +127,7 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
         async activateScene() { await runScene('setPreviewScene', this.sceneId()); },
         async populateSpawnTargets(selectedValue = '') {
             const targets = await runScene('listSpawnTargets', this.sceneId());
-            this.$.targetSpawnRef.innerHTML = '<option value="">请选择其他分镜的出生点</option>';
+            this.$.targetSpawnRef.innerHTML = '<option value="">请选择目标出生点</option>';
             for (const target of targets || []) {
                 const option = document.createElement('option');
                 option.value = `${target.sceneId}::${target.spawnId}`;
@@ -141,17 +149,32 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
                 await this.populateSpawnTargets();
                 const regions = await runScene('listRegions', this.sceneId());
                 this.regions = regions || [];
+                const filter = this.$.filter.value;
+                const visibleRegions = filter === 'all'
+                    ? this.regions
+                    : this.regions.filter((region) => String(region.type) === filter);
                 this.$.list.innerHTML = '';
-                for (const region of this.regions) {
+                for (const region of visibleRegions) {
                     const option = document.createElement('option');
                     option.value = region.id;
-                    option.textContent = `${region.typeName} · ${region.id} · ${region.points.length}点`;
+                    if (region.type === 3) {
+                        const target = region.overworldEntryId
+                            ? `大地图/${region.overworldEntryId}`
+                            : `${region.targetSceneId || '?'} / ${region.targetSpawnId || '?'}`;
+                        option.textContent = `切景 · ${region.id} → ${target}`;
+                    } else if (region.type === 5) {
+                        option.textContent = `出生点 · ${region.id}`;
+                    } else {
+                        option.textContent = `${region.typeName} · ${region.id} · ${region.points.length}点`;
+                    }
                     this.$.list.appendChild(option);
                 }
                 if (selectId) this.$.list.value = selectId;
-                if (!this.$.list.value && this.regions.length) this.$.list.value = this.regions[0].id;
+                if (!this.$.list.value && visibleRegions.length) this.$.list.value = visibleRegions[0].id;
                 this.loadSelected();
-                this.setStatus(`分镜 ${this.sceneId()}：${this.regions.length} 个区域`);
+                const transitions = this.regions.filter((region) => region.type === 3).length;
+                const spawns = this.regions.filter((region) => region.type === 5).length;
+                this.setStatus(`分镜 ${this.sceneId()}：${this.regions.length} 个区域\n切景区 ${transitions} 个，出生点 ${spawns} 个`);
             } catch (error) { this.setStatus(`刷新失败：${error.message || error}`); }
         },
         loadSelected() {
@@ -162,6 +185,21 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
             this.$.payload.value=region.payload||'{}';
             this.populateSpawnTargets(region.targetSceneId && region.targetSpawnId ? `${region.targetSceneId}::${region.targetSpawnId}` : '');
             this.$.overworldEntry.value=region.overworldEntryId||'';
+            this.$.regionEditHint.textContent = region.type === 5
+                ? '出生点位置取该区域中心。点击“选中”后拖动整个 Region-spawn-* 节点即可调整出生位置。'
+                : region.type === 3
+                    ? '切景区可拖动整个节点或各个 Vertex；下方可修改它通往的分镜和出生点。'
+                    : '可拖动整个 Region 节点调整位置，也可展开节点拖动 Vertex 调整形状。';
+        },
+        async focusSelected() {
+            const region = (this.regions || []).find((item) => item.id === this.selectedId());
+            if (!region?.nodeUuid) return this.setStatus('未找到当前区域节点，请先刷新');
+            try {
+                Editor.Selection.select('node', region.nodeUuid);
+                this.setStatus(`已选中 Scene-${this.sceneId()}/Region-${region.id}\n请在场景编辑器中拖动节点；完成后点击“保存并应用”。`);
+            } catch (error) {
+                this.setStatus(`选中节点失败：${error.message || error}`);
+            }
         },
     },
     ready() {
@@ -174,6 +212,7 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
             } catch (error) { this.setStatus(`重新扫描失败：${error.message || error}`); }
         });
         this.$.scene.addEventListener('change',()=>this.refreshRegions());
+        this.$.filter.addEventListener('change',()=>this.refreshRegions());
         this.$.ensurePerspective.addEventListener('click',async()=>{try{
             await this.activateScene();
             const result=await runScene('ensurePerspectiveCalibration',this.sceneId());
@@ -181,6 +220,8 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
             this.setStatus(`透视标定已创建并保存\n${JSON.stringify(result,null,2)}`);
         }catch(error){this.setStatus(`创建透视标定失败：${error.message||error}`);}});
         this.$.list.addEventListener('change',()=>this.loadSelected());
+        this.$.list.addEventListener('dblclick',()=>this.focusSelected());
+        this.$.focusRegion.addEventListener('click',()=>this.focusSelected());
         this.$.create.addEventListener('click',async()=>{ try {
             await this.activateScene();
             const region=await runScene('createRegularRegion',{sceneId:this.sceneId(),id:this.$.newId.value,type:Number(this.$.newType.value),sides:Number(this.$.newSides.value),radius:Number(this.$.newRadius.value)});

@@ -50,6 +50,27 @@ type ResolvedEntryPoint = {
     triggerRadius: number;
 };
 
+type LocationSceneEntry = {
+    locationId: string;
+    cocosScene: string;
+    sceneId: string;
+    spawnId: string;
+};
+
+const LOCATION_SCENE_ENTRIES: Record<string, LocationSceneEntry> = {
+    'location-1-west-01': { locationId: 'visitor-center', cocosScene: 'LocationTemplate', sceneId: 'entrance-gate', spawnId: 'spawn-1-west-01' },
+    'location-1-east-01': { locationId: 'visitor-center', cocosScene: 'LocationTemplate', sceneId: 'main-road', spawnId: 'spawn-1-east-01' },
+    'location-2-north-01': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '1', spawnId: 'spawn-overworld-north-01' },
+    'location-2-north-02': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '1', spawnId: 'spawn-overworld-north-02' },
+    'location-2-east-01': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '3', spawnId: 'spawn-overworld-east-01' },
+    'location-2-east-02': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '3', spawnId: 'spawn-overworld-east-02' },
+    'location-2-5-west-01': { locationId: 'location-2-5', cocosScene: 'Location2_5', sceneId: '1', spawnId: 'spawn-overworld-west-01' },
+    'location-2-5-east-01': { locationId: 'location-2-5', cocosScene: 'Location2_5', sceneId: '1', spawnId: 'spawn-overworld-east-01' },
+    'location-3-north-01': { locationId: 'location-3', cocosScene: 'Location3', sceneId: '1', spawnId: 'spawn-overworld-north-01' },
+    'location-4-west-01': { locationId: 'location-4', cocosScene: 'Location4', sceneId: 'main', spawnId: 'spawn-overworld-west-01' },
+    'location-4-east-01': { locationId: 'location-4', cocosScene: 'Location4', sceneId: 'main', spawnId: 'spawn-overworld-east-01' },
+};
+
 @ccclass('OverworldBootstrap')
 @executeInEditMode
 export class OverworldBootstrap extends Component implements OverworldTourHost {
@@ -813,24 +834,9 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         };
         if (this.tourGuide?.handleEntrance(tourSource)) return;
 
-        if (source.entrance.id === 'location-1') {
-            const localEntryId = source.id.replace(/^location-/, '');
-            const entersFromWest = /-west-\d+$/.test(source.id);
-            LocationTransitionState.enterLocation(
-                'visitor-center',
-                entersFromWest ? 'entrance-gate' : 'main-road',
-                `spawn-${localEntryId}`,
-            );
-            director.loadScene('LocationTemplate');
-            return;
-        }
+        if (this.enterLocationFromEntry(source)) return;
 
-        const alternatives = this.entryPoints.filter((point) => (
-            point.entrance.id === source.entrance.id && point.id !== source.id
-        ));
-        const destination = alternatives.length > 0
-            ? alternatives[Math.floor(Math.random() * alternatives.length)]
-            : source;
+        const destination = source;
 
         const center = this.getEntrancePosition(destination.entrance);
         let nearestRoute: OverworldRouteSegment | null = null;
@@ -873,6 +879,18 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         console.log(
             `[Overworld] ${source.entrance.id}: ${source.imageKey} -> ${destination.imageKey}`,
         );
+    }
+
+    private enterLocationFromEntry(source: ResolvedEntryPoint): boolean {
+        const target = LOCATION_SCENE_ENTRIES[source.id];
+        if (!target) return false;
+        LocationTransitionState.enterLocation(
+            target.locationId,
+            target.sceneId,
+            target.spawnId,
+        );
+        director.loadScene(target.cocosScene);
+        return true;
     }
 
     private openEntryPanel(point: ResolvedEntryPoint): void {
@@ -999,7 +1017,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
             }
         }
 
-        this.mergeStonePierNortheastEntry();
+        this.splitStonePierNortheastEntry();
     }
 
     private restorePlayerFromLocation(): boolean {
@@ -1017,47 +1035,43 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         return true;
     }
 
-    private mergeStonePierNortheastEntry(): void {
+    private splitStonePierNortheastEntry(): void {
         const stoneEntries = this.entryPoints.filter((point) => point.entrance.id === 'location-2');
-        const center = stoneEntries.length > 0
-            ? this.getEntrancePosition(stoneEntries[0].entrance)
-            : null;
-        const upperEntries = center
-            ? stoneEntries
-                .filter((point) => point.position.y >= center.y)
-                .sort((a, b) => b.position.y - a.position.y)
-            : [];
+        if (stoneEntries.length === 0) return;
 
-        // 正交化后右上角的两条道路交点会先被几何去重，此时已经只有 3 个入口。
-        // 只把最靠右的上方入口改名为 northeast，不能再次合并，否则会误删为 2 个。
-        if (stoneEntries.length === 3) {
-            const northeast = [...upperEntries].sort((a, b) => b.position.x - a.position.x)[0];
-            if (!northeast) return;
-            this.entryPoints = this.entryPoints.filter((point) => point !== northeast);
-            this.entryPoints.push({
-                ...northeast,
-                id: 'location-2-northeast-01',
-                imageKey: 'locations/location-2/northeast-01',
-            });
-            return;
-        }
+        const existingEast = stoneEntries.find(
+            (point) => point.id === 'location-2-east-02',
+        );
+        const existingNorth = stoneEntries.find(
+            (point) => point.id === 'location-2-north-01',
+        );
+        if (existingEast && existingNorth) return;
 
-        const legacyEast = this.entryPoints.find((point) => point.id === 'location-2-east-02');
-        const legacyNorth = this.entryPoints.find((point) => point.id === 'location-2-north-01');
-        const east = legacyEast;
-        const north = legacyNorth;
-        if (!east || !north || east === north) return;
+        const eastReference = stoneEntries.find(
+            (point) => point.id === 'location-2-east-01',
+        );
+        const northReference = stoneEntries.find(
+            (point) => point.id === 'location-2-north-02',
+        );
+        const corner = existingNorth ?? stoneEntries.find(
+            (point) => point.id === 'location-2-northeast-01',
+        );
+        if (!eastReference || !northReference || !corner) return;
 
-        this.entryPoints = this.entryPoints.filter((point) => point !== east && point !== north);
+        // 圆与右上角两条正交道路的交点距离很近，几何去重会把它们压成一个点。
+        // 用现有东侧入口的 X、北侧入口的 Y，把该点分别投影回两条道路。
+        this.entryPoints = this.entryPoints.filter((point) => point !== corner);
         this.entryPoints.push({
-            id: 'location-2-northeast-01',
-            imageKey: 'locations/location-2/northeast-01',
-            entrance: east.entrance,
-            position: new Vec2(
-                (east.position.x + north.position.x) * 0.5,
-                (east.position.y + north.position.y) * 0.5,
-            ),
-            triggerRadius: Math.max(east.triggerRadius, north.triggerRadius),
+            ...corner,
+            id: 'location-2-north-01',
+            imageKey: 'locations/location-2/north-01',
+            position: new Vec2(corner.position.x, northReference.position.y),
+        });
+        this.entryPoints.push({
+            ...corner,
+            id: 'location-2-east-02',
+            imageKey: 'locations/location-2/east-02',
+            position: new Vec2(eastReference.position.x, corner.position.y),
         });
     }
 
@@ -1162,6 +1176,9 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     }
 
     finishTourCheckpoint(source: OverworldTourEntranceContext, targetEntranceId: string): void {
+        const resolvedSource = this.entryPoints.find((point) => point.id === source.id);
+        if (resolvedSource && this.enterLocationFromEntry(resolvedSource)) return;
+
         let nearestRoute: OverworldRouteSegment | null = null;
         let nearestDistance = Number.POSITIVE_INFINITY;
         for (const route of this.routeSegments) {

@@ -70,6 +70,36 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     @property({ type: SpriteFrame, tooltip: '游客中心内景原图/风格图' })
     interiorCurrent: SpriteFrame | null = null;
 
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 1' })
+    scene1Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 2' })
+    scene2Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 3' })
+    scene3Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 4' })
+    scene4Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 4.5' })
+    scene4_5Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 5' })
+    scene5Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 6' })
+    scene6Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 7' })
+    scene7Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 8' })
+    scene8Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点宽幅主分镜' })
+    sceneMainCurrent: SpriteFrame | null = null;
+
     @property({ type: SpriteFrame, tooltip: '外景历史复原图（待制作）' })
     exteriorRestored: SpriteFrame | null = null;
 
@@ -127,7 +157,9 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         nearY: number;
         nearVisualHeight: number;
         horizonY: number;
+        keepY?: number;
     } | null = null;
+    private perspectiveKeepY: number | null = null;
     private referenceVisualHeight = 139;
     private cameraZoom = 1;
     private cameraPosition = new Vec2();
@@ -293,7 +325,10 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             graphics.fill();
         }
         parent.addChild(background);
-        if (!frame) this.loadApprovedBackground(background);
+        // Editor preview uses serialized SpriteFrame references. The editor's
+        // resources bundle cannot resolve newly imported path requests here,
+        // while runtime keeps the path fallback for defensive loading.
+        if (!frame && !EDITOR) this.loadApprovedBackground(background);
         return background;
     }
 
@@ -587,6 +622,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
                 const nearY = Number(exportedPerspective.nearY);
                 const nearVisualHeight = Number(exportedPerspective.nearVisualHeight);
                 const horizonY = Number(exportedPerspective.horizonY);
+                const keepY = Number(exportedPerspective.keepY);
                 if (
                     Number.isFinite(nearY)
                     && Number.isFinite(nearVisualHeight)
@@ -594,7 +630,12 @@ export class LocationBootstrap extends Component implements LocationTourHost {
                     && Number.isFinite(horizonY)
                     && horizonY > nearY
                 ) {
-                    sceneConfig.perspective = { nearY, nearVisualHeight, horizonY };
+                    sceneConfig.perspective = {
+                        nearY,
+                        nearVisualHeight,
+                        horizonY,
+                        ...(Number.isFinite(keepY) ? { keepY } : {}),
+                    };
                 }
             }
             const regions = (document.scenes[sceneId]?.regions ?? []).filter((region: any) => region.enabled !== false);
@@ -905,6 +946,15 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private capturePlayerPerspectiveCalibration(): void {
         this.referenceVisualHeight = 139;
         this.perspectiveProjection = this.sceneConfig.perspective ?? null;
+        const keepNode = this.node.getChildByName('RegionEditor')
+            ?.getChildByName(`Scene-${this.currentSceneId}`)
+            ?.getChildByName('PerspectiveKeep');
+        const configuredKeepY = this.perspectiveProjection?.keepY;
+        this.perspectiveKeepY = keepNode
+            ? keepNode.position.y
+            : typeof configuredKeepY === 'number' && Number.isFinite(configuredKeepY)
+                ? configuredKeepY
+                : null;
         if (this.perspectiveProjection) {
             this.referenceVisualHeight = this.perspectiveProjection.nearVisualHeight;
             this.perspectiveSamples = [];
@@ -947,12 +997,17 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private getPerspectiveVisualHeight(y: number): number {
+        // Some photographs turn upward without continuing toward the visual
+        // horizon. Above PerspectiveKeep, retain the scale at that boundary.
+        const projectedY = this.perspectiveKeepY !== null && y > this.perspectiveKeepY
+            ? this.perspectiveKeepY
+            : y;
         if (this.perspectiveProjection) {
             const { nearY, nearVisualHeight, horizonY } = this.perspectiveProjection;
             const denominator = horizonY - nearY;
             const projectedHeight = denominator <= 0
                 ? nearVisualHeight
-                : nearVisualHeight * (horizonY - y) / denominator;
+                : nearVisualHeight * (horizonY - projectedY) / denominator;
             // At and beyond the visual horizon the character remains barely
             // visible and movable instead of becoming exactly zero-sized.
             return Math.max(nearVisualHeight * 0.04, projectedHeight);
@@ -962,7 +1017,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             const range = this.sceneConfig.nearY - this.sceneConfig.farY;
             const t = range === 0
                 ? 1
-                : Math.max(0, Math.min(1, (y - this.sceneConfig.farY) / range));
+                : Math.max(0, Math.min(1, (projectedY - this.sceneConfig.farY) / range));
             const scale = this.sceneConfig.farScale
                 + (this.sceneConfig.nearScale - this.sceneConfig.farScale) * t;
             return this.referenceVisualHeight * scale;
@@ -970,8 +1025,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
         const farthest = this.perspectiveSamples[0];
         const nearest = this.perspectiveSamples[this.perspectiveSamples.length - 1];
-        if (y >= farthest.y) return farthest.visualHeight;
-        if (y <= nearest.y) {
+        if (projectedY >= farthest.y) return farthest.visualHeight;
+        if (projectedY <= nearest.y) {
             // The closest SpriteSplash is a near-field calibration point, not
             // the end of the walkable foreground. Continue scaling toward the
             // configured front edge instead of clamping the whole foreground.
@@ -986,9 +1041,9 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         for (let index = 0; index < this.perspectiveSamples.length - 1; index += 1) {
             const far = this.perspectiveSamples[index];
             const near = this.perspectiveSamples[index + 1];
-            if (y > far.y || y < near.y) continue;
+            if (projectedY > far.y || projectedY < near.y) continue;
             const range = far.y - near.y;
-            const t = range <= 0 ? 0 : (far.y - y) / range;
+            const t = range <= 0 ? 0 : (far.y - projectedY) / range;
             const visualHeight = far.visualHeight
                 + (near.visualHeight - far.visualHeight) * t;
             return visualHeight;
@@ -1073,6 +1128,16 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             case 'visitor-building': return this.visitorBuildingCurrent;
             case 'exterior': return this.exteriorCurrent;
             case 'interior': return this.interiorCurrent;
+            case '1': return this.scene1Current;
+            case '2': return this.scene2Current;
+            case '3': return this.scene3Current;
+            case '4': return this.scene4Current;
+            case '4-5': return this.scene4_5Current;
+            case '5': return this.scene5Current;
+            case '6': return this.scene6Current;
+            case '7': return this.scene7Current;
+            case '8': return this.scene8Current;
+            case 'main': return this.sceneMainCurrent;
             default: return null;
         }
     }

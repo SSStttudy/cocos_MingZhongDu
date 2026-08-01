@@ -17,6 +17,22 @@
     {
       "url": "db://assets/scenes/LocationTemplate.scene",
       "uuid": "73c39c53-1db8-49d0-9fd0-6f5f2bcd9101"
+    },
+    {
+      "url": "db://assets/scenes/Location2.scene",
+      "uuid": "fc37b811-8e9f-478b-898e-1800d53ed82e"
+    },
+    {
+      "url": "db://assets/scenes/Location2_5.scene",
+      "uuid": "4746e719-1a3e-4578-8efc-3ea5249494f8"
+    },
+    {
+      "url": "db://assets/scenes/Location3.scene",
+      "uuid": "5e00825a-f351-4786-9ee4-f64782e0aa73"
+    },
+    {
+      "url": "db://assets/scenes/Location4.scene",
+      "uuid": "e106dafd-d0ca-4cfc-b789-af83ec590164"
     }
   ]
 }

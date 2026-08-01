@@ -8,6 +8,7 @@ const REFERENCE_WIDTH = 1365;
 const REFERENCE_HEIGHT = 1024;
 const PERSPECTIVE_NEAR_NAME = 'PerspectiveNear';
 const PERSPECTIVE_HORIZON_NAME = 'PerspectiveHorizon';
+const PERSPECTIVE_KEEP_NAME = 'PerspectiveKeep';
 const SCENE_FILE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
 const SCENE_ORDER = [
     'entrance-gate',
@@ -18,6 +19,17 @@ const SCENE_ORDER = [
     'exterior',
     'interior',
 ];
+
+function getReferenceSize(sceneId) {
+    const id = getCurrentSceneId(sceneId);
+    const size = tryGetLocationBootstrap()?.config?.scenes?.[id]?.worldSize;
+    const width = Number(size?.width);
+    const height = Number(size?.height);
+    return {
+        width: Number.isFinite(width) && width > 0 ? width : REFERENCE_WIDTH,
+        height: Number.isFinite(height) && height > 0 ? height : REFERENCE_HEIGHT,
+    };
+}
 
 function getEngine() {
     return require('cc');
@@ -101,9 +113,13 @@ function ensureRegionEditor() {
     if (!root) {
         root = new Node('RegionEditor');
         root.layer = Layers.Enum.UI_2D;
-        root.addComponent(UITransform).setContentSize(REFERENCE_WIDTH, REFERENCE_HEIGHT);
+        const size = getReferenceSize();
+        root.addComponent(UITransform).setContentSize(size.width, size.height);
         canvas.addChild(root);
     }
+    const size = getReferenceSize();
+    (root.getComponent(UITransform) || root.addComponent(UITransform))
+        .setContentSize(size.width, size.height);
     root.active = true;
     return root;
 }
@@ -116,9 +132,13 @@ function ensureSceneGroup(sceneId) {
     if (!group) {
         group = new Node(`Scene-${id}`);
         group.layer = Layers.Enum.UI_2D;
-        group.addComponent(UITransform).setContentSize(REFERENCE_WIDTH, REFERENCE_HEIGHT);
+        const size = getReferenceSize(id);
+        group.addComponent(UITransform).setContentSize(size.width, size.height);
         root.addChild(group);
     }
+    const size = getReferenceSize(id);
+    (group.getComponent(UITransform) || group.addComponent(UITransform))
+        .setContentSize(size.width, size.height);
 
     // 兼容旧版本：以前 Region-* 直接放在 RegionEditor 下。
     for (const child of [...root.children]) {
@@ -127,8 +147,90 @@ function ensureSceneGroup(sceneId) {
     for (const child of root.children) {
         if (child.name.startsWith('Scene-')) child.active = child === group;
     }
+    hydrateSceneGroup(group, id);
     ensureConfiguredSpawns(group, id);
     return group;
+}
+
+function hydrateSceneGroup(group, sceneId) {
+    if (normalizeRegionNodes(group).length > 0) return;
+    const locationId = tryGetLocationBootstrap()?.locationId || 'visitor-center';
+    const sourcePath = path.join(
+        Editor.Project.path,
+        'assets',
+        'resources',
+        'locations',
+        locationId,
+        'regions.json',
+    );
+    if (!fs.existsSync(sourcePath)) return;
+    let document;
+    try {
+        document = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
+    } catch (_) {
+        return;
+    }
+    const sourceScene = document?.scenes?.[sceneId];
+    if (!sourceScene) return;
+    const { Node, UITransform, Graphics, Layers } = getEngine();
+    const size = getReferenceSize(sceneId);
+    for (const item of sourceScene.regions || []) {
+        const regionNode = new Node(`Region-${sanitizeId(item.id)}`);
+        regionNode.layer = Layers.Enum.UI_2D;
+        regionNode.addComponent(UITransform).setContentSize(size.width, size.height);
+        regionNode.addComponent(Graphics);
+        const shape = regionNode.addComponent(getRegionShapeClass());
+        shape.regionId = sanitizeId(item.id);
+        shape.regionType = Number(item.type) || 0;
+        shape.enabledRegion = item.enabled !== false;
+        shape.priority = Number(item.priority) || 0;
+        shape.handlerId = String(item.handlerId || '');
+        shape.prompt = String(item.prompt || '');
+        shape.triggerMode = String(item.triggerMode || 'button');
+        shape.payload = String(item.payload || '{}');
+        shape.targetSceneId = String(item.targetSceneId || '');
+        shape.targetSpawnId = String(item.targetSpawnId || '');
+        shape.overworldEntryId = String(item.overworldEntryId || '');
+        group.addChild(regionNode);
+        for (let index = 0; index < (item.points || []).length; index += 1) {
+            const normalized = item.points[index];
+            createVertex(
+                regionNode,
+                index,
+                (Number(normalized.x) - 0.5) * size.width,
+                (0.5 - Number(normalized.y)) * size.height,
+            );
+        }
+        shape.redraw();
+    }
+    if (sourceScene.perspective) {
+        const calibration = ensurePerspectiveCalibration(sceneId);
+        const near = group.getChildByName(PERSPECTIVE_NEAR_NAME);
+        const horizon = group.getChildByName(PERSPECTIVE_HORIZON_NAME);
+        if (near) {
+            const visualHeight = Number(sourceScene.perspective.nearVisualHeight) || 400;
+            near.setScale(1, visualHeight / 400, 1);
+            near.setPosition(
+                0,
+                Number(sourceScene.perspective.nearY) + visualHeight * 0.5,
+                0,
+            );
+        }
+        if (horizon) horizon.setPosition(0, Number(sourceScene.perspective.horizonY) || 80, 0);
+        const keepY = Number(sourceScene.perspective.keepY);
+        if (Number.isFinite(keepY)) {
+            let keep = group.getChildByName(PERSPECTIVE_KEEP_NAME);
+            if (!keep) {
+                const { Node, Layers } = getEngine();
+                keep = new Node(PERSPECTIVE_KEEP_NAME);
+                keep.layer = Layers.Enum.UI_2D;
+                group.addChild(keep);
+            }
+            keep.setPosition(0, keepY, 0);
+            drawPerspectiveKeep(keep, sceneId);
+        }
+        void calibration;
+    }
 }
 
 function drawPerspectiveNear(node) {
@@ -145,16 +247,31 @@ function drawPerspectiveNear(node) {
     graphics.stroke();
 }
 
-function drawPerspectiveHorizon(node) {
+function drawPerspectiveHorizon(node, sceneId) {
     const { UITransform, Graphics, Color } = getEngine();
+    const size = getReferenceSize(sceneId);
     const transform = node.getComponent(UITransform) || node.addComponent(UITransform);
-    transform.setContentSize(REFERENCE_WIDTH, 24);
+    transform.setContentSize(size.width, 24);
     const graphics = node.getComponent(Graphics) || node.addComponent(Graphics);
     graphics.clear();
     graphics.strokeColor = new Color(229, 72, 72, 255);
     graphics.lineWidth = 4;
-    graphics.moveTo(-REFERENCE_WIDTH * 0.5, 0);
-    graphics.lineTo(REFERENCE_WIDTH * 0.5, 0);
+    graphics.moveTo(-size.width * 0.5, 0);
+    graphics.lineTo(size.width * 0.5, 0);
+    graphics.stroke();
+}
+
+function drawPerspectiveKeep(node, sceneId) {
+    const { UITransform, Graphics, Color } = getEngine();
+    const size = getReferenceSize(sceneId);
+    const transform = node.getComponent(UITransform) || node.addComponent(UITransform);
+    transform.setContentSize(size.width, 24);
+    const graphics = node.getComponent(Graphics) || node.addComponent(Graphics);
+    graphics.clear();
+    graphics.strokeColor = new Color(255, 196, 64, 255);
+    graphics.lineWidth = 4;
+    graphics.moveTo(-size.width * 0.5, 0);
+    graphics.lineTo(size.width * 0.5, 0);
     graphics.stroke();
 }
 
@@ -162,21 +279,25 @@ function readPerspectiveCalibration(group) {
     const { UITransform } = getEngine();
     const near = group.getChildByName(PERSPECTIVE_NEAR_NAME);
     const horizon = group.getChildByName(PERSPECTIVE_HORIZON_NAME);
+    const keep = group.getChildByName(PERSPECTIVE_KEEP_NAME);
     if (!near || !horizon) return null;
 
     near.setPosition(0, near.position.y, 0);
     horizon.setPosition(0, horizon.position.y, 0);
+    if (keep) keep.setPosition(0, keep.position.y, 0);
     const transform = near.getComponent(UITransform);
     if (!transform) return null;
     const nearVisualHeight = transform.contentSize.height * Math.abs(near.scale.y);
     const lowerAnchor = near.scale.y >= 0
         ? transform.anchorPoint.y
         : 1 - transform.anchorPoint.y;
-    return {
+    const calibration = {
         nearY: Number((near.position.y - nearVisualHeight * lowerAnchor).toFixed(3)),
         nearVisualHeight: Number(nearVisualHeight.toFixed(3)),
         horizonY: Number(horizon.position.y.toFixed(3)),
     };
+    if (keep) calibration.keepY = Number(keep.position.y.toFixed(3));
+    return calibration;
 }
 
 function ensurePerspectiveCalibration(sceneId) {
@@ -198,7 +319,7 @@ function ensurePerspectiveCalibration(sceneId) {
         horizon.setPosition(0, 80, 0);
         group.addChild(horizon);
     }
-    drawPerspectiveHorizon(horizon);
+    drawPerspectiveHorizon(horizon, sceneId);
     return {
         sceneId: getCurrentSceneId(sceneId),
         names: {
@@ -276,7 +397,11 @@ function createRegionInGroup(parent, id, type, sides, radius, center = { x: 0, y
     const { Node, UITransform, Graphics, Layers } = getEngine();
     const region = new Node(`Region-${id}`);
     region.layer = Layers.Enum.UI_2D;
-    region.addComponent(UITransform).setContentSize(REFERENCE_WIDTH, REFERENCE_HEIGHT);
+    const sceneId = parent.name.startsWith('Scene-')
+        ? parent.name.slice('Scene-'.length)
+        : getCurrentSceneId();
+    const size = getReferenceSize(sceneId);
+    region.addComponent(UITransform).setContentSize(size.width, size.height);
     region.addComponent(Graphics);
     const shape = region.addComponent(getRegionShapeClass());
     shape.regionId = id;
@@ -545,13 +670,14 @@ function validateRegions(sceneId) {
     return { ok: errors.length === 0, sceneId: getCurrentSceneId(sceneId), errors, warnings, count: regions.length };
 }
 
-function toExportRegion(node) {
+function toExportRegion(node, sceneId) {
     const region = serializeRegion(node);
+    const size = getReferenceSize(sceneId);
     return {
         ...region,
         points: region.points.map((point) => ({
-            x: Number((point.x / REFERENCE_WIDTH + 0.5).toFixed(6)),
-            y: Number((0.5 - point.y / REFERENCE_HEIGHT).toFixed(6)),
+            x: Number((point.x / size.width + 0.5).toFixed(6)),
+            y: Number((0.5 - point.y / size.height).toFixed(6)),
         })),
     };
 }
@@ -569,14 +695,18 @@ function exportRegions() {
     }
     document.version = 1;
     document.locationId = locationId;
-    document.referenceSize = { width: REFERENCE_WIDTH, height: REFERENCE_HEIGHT };
+    const currentSize = getReferenceSize();
+    document.referenceSize = { width: currentSize.width, height: currentSize.height };
     document.scenes = document.scenes || {};
     const counts = {};
     for (const group of root.children.filter((child) => child.name.startsWith('Scene-'))) {
         const sceneId = group.name.slice('Scene-'.length);
-        const regions = normalizeRegionNodes(group).map(toExportRegion);
+        const regions = normalizeRegionNodes(group).map((node) => toExportRegion(node, sceneId));
         const perspective = readPerspectiveCalibration(group);
-        document.scenes[sceneId] = perspective ? { regions, perspective } : { regions };
+        const worldSize = getReferenceSize(sceneId);
+        document.scenes[sceneId] = perspective
+            ? { regions, perspective, worldSize }
+            : { regions, worldSize };
         counts[sceneId] = regions.length;
     }
     fs.writeFileSync(outputPath, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
@@ -603,14 +733,13 @@ exports.methods = {
         const targets = [];
         for (const sceneId of sceneIds) {
             const group = ensureSceneGroup(sceneId);
-            if (sceneId === currentSceneId) continue;
             for (const node of normalizeRegionNodes(group)) {
                 const shape = getRegionComponent(node);
                 if (Number(shape?.regionType) !== 5 || shape.enabledRegion === false) continue;
                 targets.push({
                     sceneId,
                     spawnId: shape.regionId,
-                    label: `${sceneId} / ${shape.regionId}`,
+                    label: `${sceneId === currentSceneId ? '当前分镜 · ' : ''}${sceneId} / ${shape.regionId}`,
                 });
             }
         }
@@ -622,7 +751,12 @@ exports.methods = {
     createRegularRegion,
     cleanupObsoleteSpawns,
     buildNamedTransitions,
-    listRegions(sceneId) { return getRegionNodes(sceneId).map(serializeRegion); },
+    listRegions(sceneId) {
+        return getRegionNodes(sceneId).map((node) => ({
+            ...serializeRegion(node),
+            nodeUuid: node.uuid,
+        }));
+    },
     setRegionProperties,
     addVertex,
     removeVertex,

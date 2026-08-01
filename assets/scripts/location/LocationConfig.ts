@@ -38,6 +38,8 @@ export type PerspectiveSceneConfig = {
         nearY: number;
         nearVisualHeight: number;
         horizonY: number;
+        /** Above this world Y, keep the character at the boundary scale. */
+        keepY?: number;
     };
 };
 
@@ -227,6 +229,121 @@ export const LOCATION_CONFIGS: Record<string, LocationSceneConfig> = {
         },
     },
 };
+
+function createRemainingPhotoScene(
+    id: string,
+    title: string,
+    spawnIds: string[],
+    worldWidth = 1365,
+): PerspectiveSceneConfig {
+    const worldSize = new Size(worldWidth, 1024);
+    const halfWidth = worldWidth * 0.5;
+    const playerStart = new Vec2(0, -340);
+    return {
+        id,
+        title,
+        backgroundAsset: id,
+        worldSize,
+        playerStart,
+        spawns: spawnIds.map((spawnId) => ({
+            id: spawnId,
+            position: playerStart.clone(),
+        })),
+        // regions.json contains the photo-specific first-pass polygons. This
+        // fallback keeps a scene usable while the editor asset is refreshing.
+        walkAreas: [[
+            new Vec2(-halfWidth, -500),
+            new Vec2(halfWidth, -500),
+            new Vec2(halfWidth * 0.82, -20),
+            new Vec2(-halfWidth * 0.82, -20),
+        ]],
+        obstacles: [],
+        transitions: [],
+        farY: -20,
+        nearY: -490,
+        farScale: 0.34,
+        nearScale: 1,
+        perspective: {
+            nearY: -490,
+            nearVisualHeight: 400,
+            horizonY: 105,
+        },
+    };
+}
+
+Object.assign(LOCATION_CONFIGS, {
+    'location-2': {
+        id: 'location-2',
+        title: '石础遗址',
+        initialSceneId: '1',
+        scenes: {
+            '1': createRemainingPhotoScene('1', '石础遗址 · 分镜 1', [
+                'spawn-from-2',
+                'spawn-overworld-north-01',
+                'spawn-overworld-north-02',
+            ]),
+            '2': createRemainingPhotoScene('2', '石础遗址 · 分镜 2', ['spawn-from-1']),
+            '3': createRemainingPhotoScene('3', '石础遗址 · 分镜 3', [
+                'spawn-from-4',
+                'spawn-overworld-east-01',
+                'spawn-overworld-east-02',
+            ]),
+            '4': createRemainingPhotoScene('4', '石础遗址 · 分镜 4', [
+                'spawn-from-3',
+                'spawn-from-4-5',
+            ]),
+            '4-5': createRemainingPhotoScene('4-5', '石础遗址 · 分镜 4.5', [
+                'spawn-from-4',
+                'spawn-from-5',
+                'spawn-from-6',
+            ]),
+            '5': createRemainingPhotoScene('5', '石础遗址 · 分镜 5', ['spawn-from-4-5']),
+            '6': createRemainingPhotoScene('6', '石础遗址 · 分镜 6', ['spawn-from-4-5']),
+        },
+    },
+    'location-2-5': {
+        id: 'location-2-5',
+        title: '古井遗址',
+        initialSceneId: '1',
+        scenes: {
+            '1': createRemainingPhotoScene('1', '古井遗址 · 分镜 1', [
+                'spawn-from-2',
+                'spawn-overworld-west-01',
+                'spawn-overworld-east-01',
+            ]),
+            '2': createRemainingPhotoScene('2', '古井遗址 · 分镜 2', ['spawn-from-1']),
+        },
+    },
+    'location-3': {
+        id: 'location-3',
+        title: '午门遗址',
+        initialSceneId: '1',
+        scenes: {
+            '1': createRemainingPhotoScene('1', '午门遗址 · 分镜 1', [
+                'spawn-from-2',
+                'spawn-overworld-north-01',
+            ]),
+            '2': createRemainingPhotoScene('2', '午门遗址 · 分镜 2', ['spawn-from-1', 'spawn-from-3']),
+            '3': createRemainingPhotoScene('3', '午门遗址 · 分镜 3', ['spawn-from-2', 'spawn-from-4']),
+            '4': createRemainingPhotoScene('4', '午门遗址 · 分镜 4', ['spawn-from-3', 'spawn-from-5']),
+            '5': createRemainingPhotoScene('5', '午门遗址 · 分镜 5', ['spawn-from-4', 'spawn-from-6']),
+            '6': createRemainingPhotoScene('6', '午门遗址 · 宽幅分镜 6', ['spawn-from-5', 'spawn-from-7'], 2464),
+            '7': createRemainingPhotoScene('7', '午门遗址 · 分镜 7', ['spawn-from-6', 'spawn-from-8']),
+            '8': createRemainingPhotoScene('8', '午门遗址 · 分镜 8', ['spawn-from-7']),
+        },
+    },
+    'location-4': {
+        id: 'location-4',
+        title: '西门遗址',
+        initialSceneId: 'main',
+        scenes: {
+            main: createRemainingPhotoScene('main', '西门遗址 · 全景', [
+                'spawn-overworld-west-01',
+                'spawn-overworld-east-01',
+            ], 2208),
+        },
+    },
+} satisfies Record<string, LocationSceneConfig>);
 
 export function getLocationConfig(id: string): LocationSceneConfig {
     return LOCATION_CONFIGS[id] ?? LOCATION_CONFIGS['visitor-center'];

@@ -66,7 +66,7 @@ async function handleBridgeRequest(request, response) {
             ok: true,
             extension: EXTENSION_NAME,
             overworld: OVERWORLD_URL,
-            revision: 'region-editor-v7-perspective-calibration',
+            revision: 'region-editor-v9-perspective-keep',
         });
         return;
     }
