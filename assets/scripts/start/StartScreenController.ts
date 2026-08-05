@@ -23,6 +23,8 @@ import {
 import { EDITOR } from 'cc/env';
 import { LocationTransitionState } from '../location/LocationTransitionState';
 import { GameSettings, loadSettings, saveSettings } from './GameSettings';
+import { TourProgressStore } from '../tour/TourProgressStore';
+import { getLocationCocosSceneName } from '../tour/TourConfig';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -54,6 +56,9 @@ export class StartScreenController extends Component {
     private titleGroup: Node | null = null;
     private mainActions: Node | null = null;
     private settingsPanel: Node | null = null;
+    private restartPanel: Node | null = null;
+    private startButton: Node | null = null;
+    private restartButton: Node | null = null;
     private scrollTransition: Node | null = null;
     private scrollLeft: Node | null = null;
     private scrollRight: Node | null = null;
@@ -61,6 +66,7 @@ export class StartScreenController extends Component {
     private soundValue: Label | null = null;
     private settings: GameSettings = loadSettings();
     private starting = false;
+    private resumeExistingTour = false;
     private lastWidth = 0;
     private lastHeight = 0;
 
@@ -110,19 +116,36 @@ export class StartScreenController extends Component {
         subtitle.spacingX = 2;
 
         this.mainActions = this.createNode('MainActions', this.screenRoot);
-        const startButton = this.createButton('StartButton', '开始游戏', 274, 58, true, this.mainActions);
-        startButton.setPosition(0, 38);
+        const progress = TourProgressStore.load();
+        this.resumeExistingTour = TourProgressStore.hasStarted();
+        const startText = progress.completed
+            ? '自由探索'
+            : this.resumeExistingTour ? '继续游览' : '开始游览';
+        this.startButton = this.createButton('StartButton', startText, 274, 58, true, this.mainActions);
+        this.startButton.setPosition(0, 58);
+        this.restartButton = this.createButton(
+            'RestartTourButton',
+            progress.completed ? '重新开始导览' : '重新开始',
+            274,
+            46,
+            false,
+            this.mainActions,
+        );
+        this.restartButton.setPosition(0, -5);
+        this.restartButton.active = this.resumeExistingTour;
         const settingsButton = this.createButton('SettingsButton', '设置', 274, 50, false, this.mainActions);
-        settingsButton.setPosition(0, -38);
+        settingsButton.setPosition(0, this.resumeExistingTour ? -62 : -22);
 
         const version = this.createLabel('开发版本 0.2', 13, new Color(232, 223, 202, 190), this.screenRoot);
         version.node.name = 'VersionLabel';
 
         this.createSettingsPanel();
+        this.createRestartPanel();
         this.createScrollTransition();
 
         if (!EDITOR) {
-            startButton.on(Node.EventType.TOUCH_END, this.startGame, this);
+            this.startButton.on(Node.EventType.TOUCH_END, this.startGame, this);
+            this.restartButton.on(Node.EventType.TOUCH_END, this.openRestartPanel, this);
             settingsButton.on(Node.EventType.TOUCH_END, this.openSettings, this);
         }
     }
@@ -166,6 +189,40 @@ export class StartScreenController extends Component {
             musicRow.node.on(Node.EventType.TOUCH_END, this.toggleMusic, this);
             soundRow.node.on(Node.EventType.TOUCH_END, this.toggleSound, this);
             close.on(Node.EventType.TOUCH_END, this.closeSettings, this);
+            card.on(Node.EventType.TOUCH_END, this.stopTouch, this);
+        }
+    }
+
+    private createRestartPanel(): void {
+        this.restartPanel = this.createNode('RestartTourPanel', this.screenRoot!);
+        this.restartPanel.active = false;
+        this.restartPanel.addComponent(UITransform);
+        this.restartPanel.addComponent(BlockInputEvents);
+
+        const dim = this.createNode('RestartDim', this.restartPanel);
+        dim.addComponent(UITransform);
+        dim.addComponent(Graphics);
+        const card = this.createNode('RestartCard', this.restartPanel);
+        card.addComponent(UITransform).setContentSize(470, 260);
+        const graphics = card.addComponent(Graphics);
+        graphics.fillColor = new Color(39, 43, 37, 250);
+        graphics.strokeColor = new Color(210, 181, 117, 220);
+        graphics.lineWidth = 2;
+        graphics.roundRect(-235, -130, 470, 260, 18);
+        graphics.fill();
+        graphics.stroke();
+
+        const title = this.createLabel('重新开始导览？', 30, CREAM, card);
+        title.node.setPosition(0, 73);
+        const detail = this.createLabel('已保存的游览进度会被清除。', 17, MUTED_CREAM, card);
+        detail.node.setPosition(0, 24);
+        const confirm = this.createButton('ConfirmRestartButton', '确认重新开始', 190, 48, true, card);
+        confirm.setPosition(-106, -70);
+        const cancel = this.createButton('CancelRestartButton', '取消', 150, 48, false, card);
+        cancel.setPosition(108, -70);
+        if (!EDITOR) {
+            confirm.on(Node.EventType.TOUCH_END, this.confirmRestart, this);
+            cancel.on(Node.EventType.TOUCH_END, this.closeRestartPanel, this);
             card.on(Node.EventType.TOUCH_END, this.stopTouch, this);
         }
     }
@@ -318,6 +375,19 @@ export class StartScreenController extends Component {
             }
         }
 
+        if (this.restartPanel) {
+            this.restartPanel.getComponent(UITransform)?.setContentSize(visible);
+            const dim = this.restartPanel.getChildByName('RestartDim');
+            dim?.getComponent(UITransform)?.setContentSize(visible);
+            const graphics = dim?.getComponent(Graphics);
+            if (graphics) {
+                graphics.clear();
+                graphics.fillColor = new Color(8, 12, 10, 190);
+                graphics.rect(-visible.width * 0.5, -visible.height * 0.5, visible.width, visible.height);
+                graphics.fill();
+            }
+        }
+
         this.layoutScrollPanels(false);
     }
 
@@ -411,21 +481,64 @@ export class StartScreenController extends Component {
         if (!this.starting) return;
         this.starting = false;
         LocationTransitionState.resetForNewGame();
+        let sceneName = 'Overworld';
+        if (this.resumeExistingTour) {
+            const anchor = TourProgressStore.load().resumeAnchor;
+            if (anchor.kind === 'location') {
+                LocationTransitionState.enterLocation(anchor.locationId, anchor.sceneId, anchor.spawnId);
+                sceneName = getLocationCocosSceneName(anchor.locationId);
+            } else if (anchor.entryId) {
+                LocationTransitionState.returnToOverworld(anchor.entryId);
+            }
+        } else {
+            TourProgressStore.reset();
+        }
         try {
-            const accepted = director.loadScene('Overworld', (error) => {
+            const accepted = director.loadScene(sceneName, (error) => {
                 if (error && this.node.isValid) {
-                    console.error('[StartScreen] 大地图加载失败。', error);
+                    console.error(`[StartScreen] ${sceneName} 加载失败。`, error);
                     this.scrollTransition!.active = false;
                 }
             });
             if (!accepted) {
-                console.error('[StartScreen] 大地图未加入当前构建场景。');
+                console.error(`[StartScreen] ${sceneName} 未加入当前构建场景。`);
                 this.scrollTransition!.active = false;
             }
         } catch (error) {
-            console.error('[StartScreen] 无法进入大地图。', error);
+            console.error(`[StartScreen] 无法进入 ${sceneName}。`, error);
             this.scrollTransition!.active = false;
         }
+    }
+
+    private openRestartPanel(event?: EventTouch): void {
+        this.stopTouch(event);
+        if (!this.restartPanel || this.starting) return;
+        this.restartPanel.active = true;
+        this.restartPanel.setSiblingIndex(this.screenRoot!.children.length - 1);
+    }
+
+    private closeRestartPanel(event?: EventTouch): void {
+        this.stopTouch(event);
+        if (this.restartPanel) this.restartPanel.active = false;
+    }
+
+    private confirmRestart(event?: EventTouch): void {
+        this.stopTouch(event);
+        TourProgressStore.reset();
+        LocationTransitionState.resetForNewGame();
+        this.resumeExistingTour = false;
+        this.closeRestartPanel();
+        this.restartButton!.active = false;
+        this.setButtonText(this.startButton!, '开始游览');
+        const settingsButton = this.mainActions?.getChildByName('SettingsButton');
+        settingsButton?.setPosition(0, -22);
+    }
+
+    private setButtonText(button: Node, text: string): void {
+        const label = button.children
+            .map((child) => child.getComponent(Label))
+            .find((item) => item);
+        if (label) label.string = text;
     }
 
     private openSettings(event?: EventTouch): void {

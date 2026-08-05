@@ -14,8 +14,10 @@ export type WalkDirection = 'down' | 'up' | 'left' | 'right';
 
 const DIRECTIONS: WalkDirection[] = ['down', 'up', 'left', 'right'];
 const FRAME_COUNT = 8;
-const FRAME_INTERVAL = 1 / 6;
+const WALK_FRAME_INTERVAL = 1 / 6;
+const RUN_FRAME_INTERVAL = 1 / 9;
 const RESOURCE_ROOT = 'characters/modern-explorer/walk';
+const RUN_RESOURCE_ROOT = 'characters/modern-explorer/run';
 const IDLE_RESOURCE_ROOT = 'characters/modern-explorer/idle';
 const IDLE_RESOURCE_NAME: Record<WalkDirection, string> = {
     down: 'down-idle-v2',
@@ -33,10 +35,12 @@ const IDLE_FRAME_INDEX: Record<WalkDirection, number> = {
 @ccclass('DirectionalWalkAnimator')
 export class DirectionalWalkAnimator extends Component {
     private readonly frames = new Map<WalkDirection, SpriteFrame[]>();
+    private readonly runFrames = new Map<WalkDirection, SpriteFrame[]>();
     private readonly idleFrames = new Map<WalkDirection, SpriteFrame>();
     private sprite!: Sprite;
     private direction: WalkDirection = 'down';
     private moving = false;
+    private running = false;
     private elapsed = 0;
     private frameIndex = 0;
     private loadVersion = 0;
@@ -62,13 +66,14 @@ export class DirectionalWalkAnimator extends Component {
     }
 
     update(deltaTime: number): void {
-        const directionFrames = this.frames.get(this.direction);
+        const directionFrames = this.getActiveFrames();
         if (!directionFrames || directionFrames.length === 0) return;
         if (!this.moving) return;
 
         this.elapsed += deltaTime;
-        while (this.elapsed >= FRAME_INTERVAL) {
-            this.elapsed -= FRAME_INTERVAL;
+        const frameInterval = this.running ? RUN_FRAME_INTERVAL : WALK_FRAME_INTERVAL;
+        while (this.elapsed >= frameInterval) {
+            this.elapsed -= frameInterval;
             this.frameIndex = (this.frameIndex + 1) % directionFrames.length;
         }
         this.applyCurrentFrame();
@@ -80,7 +85,11 @@ export class DirectionalWalkAnimator extends Component {
         transform.setAnchorPoint(0.5, 1 - 480 / 512);
     }
 
-    setMovement(input: Readonly<Vec2>, actuallyMoving = input.lengthSqr() > 0.001): void {
+    setMovement(
+        input: Readonly<Vec2>,
+        actuallyMoving = input.lengthSqr() > 0.001,
+        running = false,
+    ): void {
         if (input.lengthSqr() > 0.001) {
             const nextDirection = Math.abs(input.x) > Math.abs(input.y)
                 ? (input.x >= 0 ? 'right' : 'left')
@@ -96,11 +105,18 @@ export class DirectionalWalkAnimator extends Component {
             this.moving = actuallyMoving;
             this.elapsed = 0;
         }
+        const nextRunning = actuallyMoving && running;
+        if (nextRunning !== this.running) {
+            this.running = nextRunning;
+            this.frameIndex = 0;
+            this.elapsed = 0;
+        }
         this.applyCurrentFrame();
     }
 
     stop(): void {
         this.moving = false;
+        this.running = false;
         this.elapsed = 0;
         this.applyCurrentFrame();
     }
@@ -109,7 +125,7 @@ export class DirectionalWalkAnimator extends Component {
         const version = ++this.loadVersion;
         try {
             const loadedDirections = await Promise.all(DIRECTIONS.map(async (direction) => {
-                const [directionFrames, idleFrame] = await Promise.all([
+                const [directionFrames, directionRunFrames, idleFrame] = await Promise.all([
                     Promise.all(
                     Array.from({ length: FRAME_COUNT }, (_, index) => {
                         const frameNumber = index < 10 ? `0${index}` : `${index}`;
@@ -118,15 +134,27 @@ export class DirectionalWalkAnimator extends Component {
                         );
                     }),
                     ),
+                    Promise.all(
+                        Array.from({ length: FRAME_COUNT }, (_, index) => {
+                            const frameNumber = index < 10 ? `0${index}` : `${index}`;
+                            return this.loadSpriteFrame(
+                                `${RUN_RESOURCE_ROOT}/${direction}/${direction}-${frameNumber}/spriteFrame`,
+                            );
+                        }),
+                    ).catch((error) => {
+                        console.warn(`[DirectionalWalkAnimator] 奔跑序列加载失败，将使用行走序列`, error);
+                        return [] as SpriteFrame[];
+                    }),
                     this.loadSpriteFrame(
                         `${IDLE_RESOURCE_ROOT}/${IDLE_RESOURCE_NAME[direction]}/spriteFrame`,
                     ),
                 ]);
-                return [direction, directionFrames, idleFrame] as const;
+                return [direction, directionFrames, directionRunFrames, idleFrame] as const;
             }));
             if (version !== this.loadVersion || !this.isValid) return;
-            for (const [direction, directionFrames, idleFrame] of loadedDirections) {
+            for (const [direction, directionFrames, directionRunFrames, idleFrame] of loadedDirections) {
                 this.frames.set(direction, directionFrames);
+                this.runFrames.set(direction, directionRunFrames);
                 this.idleFrames.set(direction, idleFrame);
             }
             this.applyCurrentFrame();
@@ -148,7 +176,7 @@ export class DirectionalWalkAnimator extends Component {
     }
 
     private applyCurrentFrame(): void {
-        const directionFrames = this.frames.get(this.direction);
+        const directionFrames = this.getActiveFrames();
         if (!directionFrames || directionFrames.length === 0 || !this.sprite) return;
         const idleFrame = this.idleFrames.get(this.direction);
         if (!this.moving && idleFrame) {
@@ -159,5 +187,13 @@ export class DirectionalWalkAnimator extends Component {
             ? this.frameIndex % directionFrames.length
             : IDLE_FRAME_INDEX[this.direction];
         this.sprite.spriteFrame = directionFrames[index];
+    }
+
+    private getActiveFrames(): SpriteFrame[] | undefined {
+        const runningFrames = this.runFrames.get(this.direction);
+        if (this.running && runningFrames && runningFrames.length > 0) {
+            return runningFrames;
+        }
+        return this.frames.get(this.direction);
     }
 }
