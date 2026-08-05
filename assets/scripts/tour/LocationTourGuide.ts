@@ -10,6 +10,7 @@ import {
 } from 'cc';
 import { TourGuideOverlay } from './TourGuideOverlay';
 import { TourProgressStore } from './TourProgressStore';
+import { TourStep } from './TourConfig';
 
 const { ccclass } = _decorator;
 
@@ -36,6 +37,7 @@ export interface LocationTourHost {
     getTourRegion(sceneId: string, regionId: string): LocationTourTarget | null;
     getTourTransitionToward(targetSceneId?: string, overworldEntryId?: string): LocationTourTarget | null;
     setTourPaused(paused: boolean): void;
+    returnTourToOverworld(entryId: string): void;
 }
 
 @ccclass('LocationTourGuide')
@@ -55,11 +57,12 @@ export class LocationTourGuide extends Component {
     initialize(host: LocationTourHost): void {
         this.host = host;
         const initialStep = TourProgressStore.getCurrentStep();
-        // Directly previewing LocationTemplate bypasses the overworld entrance.
-        // Treat the visitor-center arrival as complete so testing starts at Wang.
+        // Direct scene preview bypasses the overworld entrance. Complete only the
+        // matching arrival step so each location can be tested independently.
         if (
-            initialStep?.id === 'visitor-center-enter'
-            && host.getTourLocationId() === 'visitor-center'
+            initialStep?.kind === 'overworld-entrance'
+            && initialStep.resumeAfter.kind === 'location'
+            && initialStep.resumeAfter.locationId === host.getTourLocationId()
         ) {
             TourProgressStore.markVisited(initialStep.id, initialStep.resumeAfter);
         }
@@ -86,6 +89,7 @@ export class LocationTourGuide extends Component {
 
     handleOverworldTransition(entryId: string): void {
         const step = TourProgressStore.getCurrentStep();
+        this.overlay?.setContextAction('查看', null);
         if (
             step?.kind !== 'return-overworld'
             || step.overworldEntryId !== entryId
@@ -93,8 +97,13 @@ export class LocationTourGuide extends Component {
         TourProgressStore.markVisited(step.id, step.resumeAfter);
     }
 
+    activateCurrentTarget(): boolean {
+        return this.overlay?.triggerContextAction() ?? false;
+    }
+
     private updateTarget(): void {
         if (!this.host || !this.overlay || this.completing) return;
+        this.overlay.setContextAction('查看', null);
         const step = TourProgressStore.getCurrentStep();
         if (!step) {
             this.clearMarker();
@@ -131,7 +140,7 @@ export class LocationTourGuide extends Component {
                     this.missingWarnings.add(warningKey);
                     console.warn(`[TourGuide] 目标区域 ${warningKey} 不存在，已按进入分镜完成。`);
                 }
-                this.completeLookTarget(step.id, step.title, step.speech, step.resumeAfter);
+                this.completeLookTarget(step);
                 return;
             }
             this.drawMarker(
@@ -139,7 +148,11 @@ export class LocationTourGuide extends Component {
                 step.proximity ?? 64,
             );
             if (this.distanceToPolygon(this.host.getTourPlayerPosition(), region.polygon) <= (step.proximity ?? 64)) {
-                this.completeLookTarget(step.id, step.title, step.speech, step.resumeAfter);
+                if (step.completionMode === 'action' || step.targetKind === 'interaction') {
+                    this.overlay.setContextAction('查看', () => this.completeLookTarget(step));
+                } else {
+                    this.completeLookTarget(step);
+                }
             }
             return;
         }
@@ -153,25 +166,38 @@ export class LocationTourGuide extends Component {
         this.clearMarker();
     }
 
-    private completeLookTarget(
-        stepId: string,
-        title: string,
-        speech: string,
-        resumeAnchor: Parameters<typeof TourProgressStore.markVisited>[1],
-    ): void {
+    private completeLookTarget(step: TourStep): void {
         if (!this.host || !this.overlay || this.completing) return;
         this.completing = true;
-        TourProgressStore.markVisited(stepId, resumeAnchor);
+        TourProgressStore.markVisited(step.id, step.resumeAfter);
         this.host.setTourPaused(true);
         this.clearMarker();
-        this.overlay.setSpeech(speech, 'explain');
-        this.overlay.showCheckpoint(title, speech, () => {
+        this.overlay.setContextAction('查看', null);
+        this.overlay.setSpeech(step.speech, 'explain');
+        const finished = TourProgressStore.load().completed;
+        const continueAction = () => {
             if (!this.host) return;
             this.host.setTourPaused(false);
             this.completing = false;
             this.refreshObjective(false);
             this.updateTarget();
-        });
+        };
+        this.overlay.showCheckpoint(
+            step.title,
+            step.knowledgeText ?? step.speech,
+            continueAction,
+            finished ? '留在午门自由探索' : '继续游览',
+            finished
+                ? {
+                    label: '返回大地图',
+                    action: () => {
+                        this.host?.setTourPaused(false);
+                        this.completing = false;
+                        this.host?.returnTourToOverworld('location-3-north-01');
+                    },
+                }
+                : undefined,
+        );
     }
 
     private refreshObjective(initial: boolean): void {
@@ -294,6 +320,7 @@ export class LocationTourGuide extends Component {
     private clearMarker(): void {
         this.markerGraphics?.clear();
         this.routeGraphics?.clear();
+        this.overlay?.setContextAction('查看', null);
     }
 
     private drawRouteDots(target: Vec2): void {

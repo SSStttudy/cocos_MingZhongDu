@@ -40,6 +40,7 @@ import {
     LocationTourHost,
     LocationTourTarget,
 } from '../tour/LocationTourGuide';
+import { TourProgressStore } from '../tour/TourProgressStore';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -69,6 +70,36 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
     @property({ type: SpriteFrame, tooltip: '游客中心内景原图/风格图' })
     interiorCurrent: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 1' })
+    scene1Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 2' })
+    scene2Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 3' })
+    scene3Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 4' })
+    scene4Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 4.5' })
+    scene4_5Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 5' })
+    scene5Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 6' })
+    scene6Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 7' })
+    scene7Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点分镜 8' })
+    scene8Current: SpriteFrame | null = null;
+
+    @property({ type: SpriteFrame, tooltip: '通用地点宽幅主分镜' })
+    sceneMainCurrent: SpriteFrame | null = null;
 
     @property({ type: SpriteFrame, tooltip: '外景历史复原图（待制作）' })
     exteriorRestored: SpriteFrame | null = null;
@@ -102,6 +133,9 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private playerAnimator!: DirectionalWalkAnimator;
     private joystick!: Node;
     private joystickKnob!: Node;
+    private actionButtons!: Node;
+    private interactionButton!: Node;
+    private speedButton!: Node;
     private titleLabel!: Label;
     private modeLabel!: Label;
     private moveInput = new Vec2();
@@ -109,6 +143,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private joystickInput = new Vec2();
     private pressedKeys = new Set<KeyCode>();
     private activeTouchId: number | null = null;
+    private speedTouchId: number | null = null;
+    private speedBoostHeld = false;
     private transitionCooldown = 0.8;
     private restoredMode = false;
     private editorSceneId = '';
@@ -127,7 +163,9 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         nearY: number;
         nearVisualHeight: number;
         horizonY: number;
+        keepY?: number;
     } | null = null;
+    private perspectiveKeepY: number | null = null;
     private referenceVisualHeight = 139;
     private cameraZoom = 1;
     private cameraPosition = new Vec2();
@@ -163,6 +201,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.renderRuntimeScene(this.currentSceneId, entrySpawn ?? this.sceneConfig.playerStart);
         this.createHud();
         this.createJoystick();
+        this.createActionButtons();
         this.tourGuide = this.node.addComponent(LocationTourGuide);
         this.tourGuide.initialize(this);
         this.bindInput();
@@ -170,6 +209,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     onDestroy(): void {
+        this.speedBoostHeld = false;
+        this.speedTouchId = null;
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
     }
@@ -293,7 +334,10 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             graphics.fill();
         }
         parent.addChild(background);
-        if (!frame) this.loadApprovedBackground(background);
+        // Editor preview uses serialized SpriteFrame references. The editor's
+        // resources bundle cannot resolve newly imported path requests here,
+        // while runtime keeps the path fallback for defensive loading.
+        if (!frame && !EDITOR) this.loadApprovedBackground(background);
         return background;
     }
 
@@ -454,6 +498,83 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.joystick.on(Node.EventType.TOUCH_CANCEL, this.onJoystickEnd, this);
     }
 
+    private createActionButtons(): void {
+        this.actionButtons = new Node('ActionButtons');
+        this.actionButtons.layer = Layers.Enum.UI_2D;
+        this.actionButtons.addComponent(UITransform).setContentSize(270, 190);
+        this.node.addChild(this.actionButtons);
+
+        this.interactionButton = this.createRoundActionButton('InteractionButton', '交互', 112);
+        this.interactionButton.setPosition(58, -34, 0);
+        this.interactionButton.on(Node.EventType.TOUCH_END, this.onInteractionButton, this);
+        this.actionButtons.addChild(this.interactionButton);
+
+        this.speedButton = this.createRoundActionButton('SpeedButton', '疾行\n×2', 92);
+        this.speedButton.setPosition(-50, 35, 0);
+        this.speedButton.on(Node.EventType.TOUCH_START, this.onSpeedStart, this);
+        this.speedButton.on(Node.EventType.TOUCH_END, this.onSpeedEnd, this);
+        this.speedButton.on(Node.EventType.TOUCH_CANCEL, this.onSpeedEnd, this);
+        this.actionButtons.addChild(this.speedButton);
+    }
+
+    private createRoundActionButton(name: string, text: string, size: number): Node {
+        const node = new Node(name);
+        node.layer = Layers.Enum.UI_2D;
+        node.addComponent(UITransform).setContentSize(size, size);
+        const graphics = node.addComponent(Graphics);
+        graphics.fillColor = new Color(25, 41, 45, 105);
+        graphics.strokeColor = new Color(255, 255, 255, 165);
+        graphics.lineWidth = 3;
+        graphics.circle(0, 0, size * 0.5);
+        graphics.fill();
+        graphics.stroke();
+        graphics.fillColor = new Color(246, 235, 188, 220);
+        graphics.strokeColor = new Color(72, 69, 48, 235);
+        graphics.lineWidth = 3;
+        graphics.circle(0, 0, size * 0.36);
+        graphics.fill();
+        graphics.stroke();
+        const labelNode = new Node('ButtonLabel');
+        labelNode.layer = Layers.Enum.UI_2D;
+        labelNode.addComponent(UITransform).setContentSize(size - 10, size - 10);
+        const label = labelNode.addComponent(Label);
+        label.string = text;
+        label.fontSize = size >= 100 ? 21 : 17;
+        label.lineHeight = size >= 100 ? 25 : 20;
+        label.color = new Color(62, 59, 43, 255);
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        node.addChild(labelNode);
+        return node;
+    }
+
+    private onInteractionButton(event: EventTouch): void {
+        event.propagationStopped = true;
+        this.interactionButton.setScale(1, 1, 1);
+        this.activateInteraction();
+    }
+
+    private activateInteraction(): void {
+        if (this.tourGuide?.activateCurrentTarget()) return;
+        this.activateNearbyInteraction();
+    }
+
+    private onSpeedStart(event: EventTouch): void {
+        event.propagationStopped = true;
+        if (this.speedTouchId !== null) return;
+        this.speedTouchId = event.getID();
+        this.speedBoostHeld = true;
+        this.speedButton.setScale(0.9, 0.9, 1);
+    }
+
+    private onSpeedEnd(event: EventTouch): void {
+        event.propagationStopped = true;
+        if (event.getID() !== this.speedTouchId) return;
+        this.speedTouchId = null;
+        this.speedBoostHeld = false;
+        this.speedButton.setScale(1, 1, 1);
+    }
+
     private bindInput(): void {
         input.on(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.on(Input.EventType.KEY_UP, this.onKeyUp, this);
@@ -462,7 +583,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private onKeyDown(event: EventKeyboard): void {
         if (event.keyCode === KeyCode.KEY_R) this.toggleRestoredMode();
         if (event.keyCode === KeyCode.KEY_E || event.keyCode === KeyCode.SPACE) {
-            this.activateNearbyInteraction();
+            this.activateInteraction();
         }
         this.pressedKeys.add(event.keyCode);
         this.refreshKeyboardInput();
@@ -530,21 +651,21 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         );
         if (this.moveInput.lengthSqr() > 1) this.moveInput.normalize();
         if (this.moveInput.lengthSqr() < 0.001) {
-            this.playerAnimator?.setMovement(this.moveInput, false);
+            this.playerAnimator?.setMovement(this.moveInput, false, false);
             return;
         }
 
         const previousPosition = this.playerPosition.clone();
         const perspectiveScale = this.getPerspectiveScale(this.playerPosition.y);
         const step = this.moveInput.clone().multiplyScalar(
-            this.defaultMoveSpeed * perspectiveScale * deltaTime,
+            this.defaultMoveSpeed * perspectiveScale * (this.speedBoostHeld ? 2 : 1) * deltaTime,
         );
         const nextX = new Vec2(this.playerPosition.x + step.x, this.playerPosition.y);
         if (this.canStandAt(nextX)) this.playerPosition.x = nextX.x;
         const nextY = new Vec2(this.playerPosition.x, this.playerPosition.y + step.y);
         if (this.canStandAt(nextY)) this.playerPosition.y = nextY.y;
         const moved = Vec2.distance(previousPosition, this.playerPosition) > 0.01;
-        this.playerAnimator?.setMovement(this.moveInput, moved);
+        this.playerAnimator?.setMovement(this.moveInput, moved, this.speedBoostHeld);
         this.updatePlayerVisual();
         this.checkInteractions();
         this.checkTransitions();
@@ -587,6 +708,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
                 const nearY = Number(exportedPerspective.nearY);
                 const nearVisualHeight = Number(exportedPerspective.nearVisualHeight);
                 const horizonY = Number(exportedPerspective.horizonY);
+                const keepY = Number(exportedPerspective.keepY);
                 if (
                     Number.isFinite(nearY)
                     && Number.isFinite(nearVisualHeight)
@@ -594,7 +716,12 @@ export class LocationBootstrap extends Component implements LocationTourHost {
                     && Number.isFinite(horizonY)
                     && horizonY > nearY
                 ) {
-                    sceneConfig.perspective = { nearY, nearVisualHeight, horizonY };
+                    sceneConfig.perspective = {
+                        nearY,
+                        nearVisualHeight,
+                        horizonY,
+                        ...(Number.isFinite(keepY) ? { keepY } : {}),
+                    };
                 }
             }
             const regions = (document.scenes[sceneId]?.regions ?? []).filter((region: any) => region.enabled !== false);
@@ -729,6 +856,15 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
         if (transition.targetSceneId) {
             this.transitionCooldown = 0.8;
+            const currentTourStep = TourProgressStore.getCurrentStep();
+            if (currentTourStep?.locationId === this.locationId) {
+                TourProgressStore.setResumeAnchor({
+                    kind: 'location',
+                    locationId: this.locationId,
+                    sceneId: transition.targetSceneId,
+                    spawnId: transition.targetSpawnId ?? '',
+                });
+            }
             const spawn = transition.targetSpawnId
                 ? this.spawnPoints.get(transition.targetSceneId)?.get(transition.targetSpawnId)
                 : undefined;
@@ -895,6 +1031,9 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     setTourPaused(paused: boolean): void {
         this.tourPaused = paused;
         if (paused) {
+            this.speedBoostHeld = false;
+            this.speedTouchId = null;
+            this.speedButton?.setScale(1, 1, 1);
             this.joystickInput.set(0, 0);
             this.keyboardInput.set(0, 0);
             this.joystickKnob?.setPosition(0, 0, 0);
@@ -902,9 +1041,23 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         }
     }
 
+    returnTourToOverworld(entryId: string): void {
+        LocationTransitionState.returnToOverworld(entryId);
+        director.loadScene('Overworld');
+    }
+
     private capturePlayerPerspectiveCalibration(): void {
         this.referenceVisualHeight = 139;
         this.perspectiveProjection = this.sceneConfig.perspective ?? null;
+        const keepNode = this.node.getChildByName('RegionEditor')
+            ?.getChildByName(`Scene-${this.currentSceneId}`)
+            ?.getChildByName('PerspectiveKeep');
+        const configuredKeepY = this.perspectiveProjection?.keepY;
+        this.perspectiveKeepY = keepNode
+            ? keepNode.position.y
+            : typeof configuredKeepY === 'number' && Number.isFinite(configuredKeepY)
+                ? configuredKeepY
+                : null;
         if (this.perspectiveProjection) {
             this.referenceVisualHeight = this.perspectiveProjection.nearVisualHeight;
             this.perspectiveSamples = [];
@@ -947,12 +1100,17 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private getPerspectiveVisualHeight(y: number): number {
+        // Some photographs turn upward without continuing toward the visual
+        // horizon. Above PerspectiveKeep, retain the scale at that boundary.
+        const projectedY = this.perspectiveKeepY !== null && y > this.perspectiveKeepY
+            ? this.perspectiveKeepY
+            : y;
         if (this.perspectiveProjection) {
             const { nearY, nearVisualHeight, horizonY } = this.perspectiveProjection;
             const denominator = horizonY - nearY;
             const projectedHeight = denominator <= 0
                 ? nearVisualHeight
-                : nearVisualHeight * (horizonY - y) / denominator;
+                : nearVisualHeight * (horizonY - projectedY) / denominator;
             // At and beyond the visual horizon the character remains barely
             // visible and movable instead of becoming exactly zero-sized.
             return Math.max(nearVisualHeight * 0.04, projectedHeight);
@@ -962,7 +1120,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             const range = this.sceneConfig.nearY - this.sceneConfig.farY;
             const t = range === 0
                 ? 1
-                : Math.max(0, Math.min(1, (y - this.sceneConfig.farY) / range));
+                : Math.max(0, Math.min(1, (projectedY - this.sceneConfig.farY) / range));
             const scale = this.sceneConfig.farScale
                 + (this.sceneConfig.nearScale - this.sceneConfig.farScale) * t;
             return this.referenceVisualHeight * scale;
@@ -970,8 +1128,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
         const farthest = this.perspectiveSamples[0];
         const nearest = this.perspectiveSamples[this.perspectiveSamples.length - 1];
-        if (y >= farthest.y) return farthest.visualHeight;
-        if (y <= nearest.y) {
+        if (projectedY >= farthest.y) return farthest.visualHeight;
+        if (projectedY <= nearest.y) {
             // The closest SpriteSplash is a near-field calibration point, not
             // the end of the walkable foreground. Continue scaling toward the
             // configured front edge instead of clamping the whole foreground.
@@ -986,9 +1144,9 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         for (let index = 0; index < this.perspectiveSamples.length - 1; index += 1) {
             const far = this.perspectiveSamples[index];
             const near = this.perspectiveSamples[index + 1];
-            if (y > far.y || y < near.y) continue;
+            if (projectedY > far.y || projectedY < near.y) continue;
             const range = far.y - near.y;
-            const t = range <= 0 ? 0 : (far.y - y) / range;
+            const t = range <= 0 ? 0 : (far.y - projectedY) / range;
             const visualHeight = far.visualHeight
                 + (near.visualHeight - far.visualHeight) * t;
             return visualHeight;
@@ -1073,6 +1231,16 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             case 'visitor-building': return this.visitorBuildingCurrent;
             case 'exterior': return this.exteriorCurrent;
             case 'interior': return this.interiorCurrent;
+            case '1': return this.scene1Current;
+            case '2': return this.scene2Current;
+            case '3': return this.scene3Current;
+            case '4': return this.scene4Current;
+            case '4-5': return this.scene4_5Current;
+            case '5': return this.scene5Current;
+            case '6': return this.scene6Current;
+            case '7': return this.scene7Current;
+            case '8': return this.scene8Current;
+            case 'main': return this.sceneMainCurrent;
             default: return null;
         }
     }
@@ -1093,6 +1261,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         if (!this.joystick) return;
         const visible = view.getVisibleSize();
         this.joystick.setPosition(-visible.width * 0.5 + 112, -visible.height * 0.5 + 112, 0);
+        this.actionButtons?.setPosition(visible.width * 0.5 - 164, -visible.height * 0.5 + 122, 0);
         this.node.getChildByName('LocationTitle')?.setPosition(0, visible.height * 0.5 - 44, 0);
         this.node.getChildByName('ImageModeButton')?.setPosition(visible.width * 0.5 - 125, visible.height * 0.5 - 54, 0);
     }

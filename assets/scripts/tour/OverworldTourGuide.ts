@@ -8,7 +8,7 @@ import {
     UITransform,
     Vec2,
 } from 'cc';
-import { getStepForEntrance, TourStep } from './TourConfig';
+import { TOUR_STEPS } from './TourConfig';
 import { TourGuideOverlay } from './TourGuideOverlay';
 import { TourProgressStore } from './TourProgressStore';
 
@@ -26,7 +26,7 @@ export interface OverworldTourHost {
     readonly node: Node;
     getTourWorld(): Node;
     getTourPlayerPosition(): Vec2;
-    getTourPathToEntrance(entranceId: string): Vec2[];
+    getTourPathToEntrance(entranceId: string, entryPointId?: string): Vec2[];
     setTourPaused(paused: boolean): void;
     finishTourCheckpoint(source: OverworldTourEntranceContext, targetEntranceId: string): void;
 }
@@ -64,43 +64,19 @@ export class OverworldTourGuide extends Component {
 
     handleEntrance(source: OverworldTourEntranceContext): boolean {
         if (!this.host || !this.overlay) return false;
-        const arrivalStep = getStepForEntrance(source.entranceId);
-        if (!arrivalStep) return false;
+        const discovered = TOUR_STEPS.find((step) => (
+            step.kind === 'overworld-entrance' && step.entranceId === source.entranceId
+        ));
+        if (discovered) TourProgressStore.markDiscovered(discovered.id);
 
-        const wasVisited = TourProgressStore.isVisited(arrivalStep.id);
-        const anchor = arrivalStep.resumeAfter.kind === 'overworld'
-            ? { kind: 'overworld' as const, entryId: source.id }
-            : arrivalStep.resumeAfter;
-        TourProgressStore.markVisited(arrivalStep.id, anchor);
-
-        if (source.entranceId === 'location-1') {
-            this.refreshObjective(true);
-            return false;
-        }
-
-        this.host.setTourPaused(true);
-        const nextTarget = this.getTargetEntranceId();
-        if (wasVisited) {
-            this.host.finishTourCheckpoint(source, nextTarget);
-            this.host.setTourPaused(false);
+        const current = TourProgressStore.getCurrentStep();
+        if (current?.kind === 'overworld-entrance' && current.entranceId === source.entranceId) {
+            TourProgressStore.markVisited(current.id, current.resumeAfter);
             this.refreshObjective(false);
-            return true;
+            this.redrawRouteDots(true);
         }
-
-        this.overlay.setSpeech(arrivalStep.speech, 'explain');
-        this.overlay.showCheckpoint(
-            arrivalStep.title,
-            arrivalStep.speech,
-            () => {
-                if (!this.host) return;
-                this.host.finishTourCheckpoint(source, this.getTargetEntranceId());
-                this.host.setTourPaused(false);
-                this.refreshObjective(false);
-                this.redrawRouteDots(true);
-            },
-        );
-        this.refreshObjective(false);
-        return true;
+        // 进入地点仍交给 OverworldBootstrap，导览只记录当前“到达”步骤。
+        return false;
     }
 
     private refreshObjective(initial: boolean): void {
@@ -122,7 +98,22 @@ export class OverworldTourGuide extends Component {
         const step = TourProgressStore.getCurrentStep();
         if (!step) return '';
         if (step.kind === 'overworld-entrance') return step.entranceId ?? '';
-        if (step.locationId === 'visitor-center') return 'location-1';
+        if (step.kind === 'return-overworld') {
+            return ({
+                'visitor-center': 'location-1',
+                'location-2': 'location-2',
+                'location-2-5': 'location-2-5',
+                'location-3': 'location-3',
+                'location-4': 'location-4',
+            } as Record<string, string>)[step.locationId ?? ''] ?? '';
+        }
+        return '';
+    }
+
+    private getTargetEntryPointId(): string {
+        const step = TourProgressStore.getCurrentStep();
+        if (step?.kind === 'overworld-entrance') return step.entryPointId ?? '';
+        if (step?.kind === 'return-overworld') return step.overworldEntryId ?? '';
         return '';
     }
 
@@ -141,7 +132,10 @@ export class OverworldTourGuide extends Component {
         this.dotsGraphics!.clear();
         if (!targetEntranceId) return;
 
-        const path = this.host.getTourPathToEntrance(targetEntranceId);
+        const path = this.host.getTourPathToEntrance(
+            targetEntranceId,
+            this.getTargetEntryPointId(),
+        );
         if (path.length < 2) return;
         const samples = this.samplePolyline(path, 54);
         for (let index = 0; index < samples.length; index += 1) {

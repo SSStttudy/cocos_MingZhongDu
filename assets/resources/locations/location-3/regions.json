@@ -1,0 +1,1603 @@
+{
+  "version": 1,
+  "locationId": "location-3",
+  "referenceSize": {
+    "width": 1365,
+    "height": 1024
+  },
+  "scenes": {
+    "1": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": -0.002084,
+              "y": 1.007943
+            },
+            {
+              "x": 0.539985,
+              "y": 1.007943
+            },
+            {
+              "x": 0.30718,
+              "y": 0.54837
+            },
+            {
+              "x": 0.23764,
+              "y": 0.557445
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-2",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.278947,
+              "y": 0.567595
+            },
+            {
+              "x": 0.292947,
+              "y": 0.586595
+            },
+            {
+              "x": 0.278947,
+              "y": 0.605595
+            },
+            {
+              "x": 0.264947,
+              "y": 0.586595
+            }
+          ]
+        },
+        {
+          "id": "to-2",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "2",
+          "targetSpawnId": "spawn-from-1",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.244864,
+              "y": 0.527564
+            },
+            {
+              "x": 0.311822,
+              "y": 0.523593
+            },
+            {
+              "x": 0.31927,
+              "y": 0.555086
+            },
+            {
+              "x": 0.227884,
+              "y": 0.563029
+            }
+          ]
+        },
+        {
+          "id": "spawn-overworld-north-01",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.269434,
+              "y": 0.87652
+            },
+            {
+              "x": 0.283434,
+              "y": 0.89552
+            },
+            {
+              "x": 0.269434,
+              "y": 0.91452
+            },
+            {
+              "x": 0.255434,
+              "y": 0.89552
+            }
+          ]
+        },
+        {
+          "id": "to-overworld-north-01",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "location-3-north-01",
+          "points": [
+            {
+              "x": 0.029582,
+              "y": 0.945373
+            },
+            {
+              "x": 0.509305,
+              "y": 0.941762
+            },
+            {
+              "x": 0.530477,
+              "y": 0.998015
+            },
+            {
+              "x": 0.003853,
+              "y": 1.003972
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -391.539,
+        "nearVisualHeight": 400,
+        "horizonY": 20.948
+      },
+      "worldSize": {
+        "width": 1365,
+        "height": 1024
+      }
+    },
+    "2": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.120072,
+              "y": 0.994043
+            },
+            {
+              "x": 0.203404,
+              "y": 0.826244
+            },
+            {
+              "x": 0.323083,
+              "y": 0.759721
+            },
+            {
+              "x": 0.333994,
+              "y": 0.466952
+            },
+            {
+              "x": 0.382141,
+              "y": 0.456171
+            },
+            {
+              "x": 0.478736,
+              "y": 0.575317
+            },
+            {
+              "x": 0.479804,
+              "y": 0.735033
+            },
+            {
+              "x": 0.830568,
+              "y": 0.854045
+            },
+            {
+              "x": 0.984783,
+              "y": 0.993751
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-1",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.49936,
+              "y": 0.900005
+            },
+            {
+              "x": 0.51336,
+              "y": 0.919005
+            },
+            {
+              "x": 0.49936,
+              "y": 0.938005
+            },
+            {
+              "x": 0.48536,
+              "y": 0.919005
+            }
+          ]
+        },
+        {
+          "id": "to-1",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "1",
+          "targetSpawnId": "spawn-from-2",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.73081,
+              "y": 0.950516
+            },
+            {
+              "x": 0.837338,
+              "y": 0.853037
+            },
+            {
+              "x": 0.98104,
+              "y": 0.997446
+            },
+            {
+              "x": 0.116499,
+              "y": 0.993475
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-3",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.374577,
+              "y": 0.48734
+            },
+            {
+              "x": 0.388577,
+              "y": 0.50634
+            },
+            {
+              "x": 0.374577,
+              "y": 0.52534
+            },
+            {
+              "x": 0.360577,
+              "y": 0.50634
+            }
+          ]
+        },
+        {
+          "id": "to-3",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "3",
+          "targetSpawnId": "spawn-from-2",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.332111,
+              "y": 0.453622
+            },
+            {
+              "x": 0.381786,
+              "y": 0.451636
+            },
+            {
+              "x": 0.402544,
+              "y": 0.475099
+            },
+            {
+              "x": 0.330935,
+              "y": 0.481309
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -333.904,
+        "nearVisualHeight": 400,
+        "horizonY": 78.584
+      },
+      "worldSize": {
+        "width": 1365,
+        "height": 1024
+      }
+    },
+    "3": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.309264,
+              "y": 0.996028
+            },
+            {
+              "x": 0.872782,
+              "y": 0.996028
+            },
+            {
+              "x": 0.639303,
+              "y": 0.716033
+            },
+            {
+              "x": 0.839596,
+              "y": 0.703261
+            },
+            {
+              "x": 0.759629,
+              "y": 0.60709
+            },
+            {
+              "x": 0.552021,
+              "y": 0.622977
+            },
+            {
+              "x": 0.457156,
+              "y": 0.518583
+            },
+            {
+              "x": 0.436839,
+              "y": 0.513483
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-2",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.557207,
+              "y": 0.868483
+            },
+            {
+              "x": 0.571207,
+              "y": 0.887483
+            },
+            {
+              "x": 0.557207,
+              "y": 0.906483
+            },
+            {
+              "x": 0.543207,
+              "y": 0.887483
+            }
+          ]
+        },
+        {
+          "id": "to-2",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "2",
+          "targetSpawnId": "spawn-from-3",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.324772,
+              "y": 0.941721
+            },
+            {
+              "x": 0.821979,
+              "y": 0.92995
+            },
+            {
+              "x": 0.876761,
+              "y": 0.99546
+            },
+            {
+              "x": 0.31016,
+              "y": 0.99546
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-4",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.647286,
+              "y": 0.62901
+            },
+            {
+              "x": 0.661286,
+              "y": 0.64801
+            },
+            {
+              "x": 0.647286,
+              "y": 0.66701
+            },
+            {
+              "x": 0.633286,
+              "y": 0.64801
+            }
+          ]
+        },
+        {
+          "id": "to-4",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "4",
+          "targetSpawnId": "spawn-from-3",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.703337,
+              "y": 0.612483
+            },
+            {
+              "x": 0.760461,
+              "y": 0.608512
+            },
+            {
+              "x": 0.840905,
+              "y": 0.705535
+            },
+            {
+              "x": 0.774842,
+              "y": 0.707521
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -398.744,
+        "nearVisualHeight": 400,
+        "horizonY": 5.135
+      },
+      "worldSize": {
+        "width": 1365,
+        "height": 1024
+      }
+    },
+    "4": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.133205,
+              "y": 1.001682
+            },
+            {
+              "x": 0.877251,
+              "y": 1.003972
+            },
+            {
+              "x": 0.62508,
+              "y": 0.729076
+            },
+            {
+              "x": 0.260889,
+              "y": 0.712336
+            },
+            {
+              "x": 0.204055,
+              "y": 0.781839
+            },
+            {
+              "x": 0.342449,
+              "y": 0.784678
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-3",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.505776,
+              "y": 0.884453
+            },
+            {
+              "x": 0.519776,
+              "y": 0.903453
+            },
+            {
+              "x": 0.505776,
+              "y": 0.922453
+            },
+            {
+              "x": 0.491776,
+              "y": 0.903453
+            }
+          ]
+        },
+        {
+          "id": "to-3",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "3",
+          "targetSpawnId": "spawn-from-4",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.180379,
+              "y": 0.954519
+            },
+            {
+              "x": 0.841214,
+              "y": 0.961852
+            },
+            {
+              "x": 0.88123,
+              "y": 1.001417
+            },
+            {
+              "x": 0.134376,
+              "y": 1.001417
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-5",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.347624,
+              "y": 0.729228
+            },
+            {
+              "x": 0.361624,
+              "y": 0.748228
+            },
+            {
+              "x": 0.347624,
+              "y": 0.767228
+            },
+            {
+              "x": 0.333624,
+              "y": 0.748228
+            }
+          ]
+        },
+        {
+          "id": "to-5",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "5",
+          "targetSpawnId": "spawn-from-4",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.256149,
+              "y": 0.713759
+            },
+            {
+              "x": 0.328169,
+              "y": 0.715744
+            },
+            {
+              "x": 0.284374,
+              "y": 0.784967
+            },
+            {
+              "x": 0.205499,
+              "y": 0.77901
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -497.204,
+        "nearVisualHeight": 400,
+        "horizonY": -95.061
+      },
+      "worldSize": {
+        "width": 1365,
+        "height": 1024
+      }
+    },
+    "5": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.287727,
+              "y": 0.534882
+            },
+            {
+              "x": 0.294237,
+              "y": 0.752696
+            },
+            {
+              "x": 0.254038,
+              "y": 0.995663
+            },
+            {
+              "x": 0.999946,
+              "y": 0.998015
+            },
+            {
+              "x": 0.999407,
+              "y": 0.920568
+            },
+            {
+              "x": 0.622166,
+              "y": 0.704019
+            },
+            {
+              "x": 0.714345,
+              "y": 0.703795
+            },
+            {
+              "x": 0.612068,
+              "y": 0.543475
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-4",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.697793,
+              "y": 0.903977
+            },
+            {
+              "x": 0.711793,
+              "y": 0.922977
+            },
+            {
+              "x": 0.697793,
+              "y": 0.941977
+            },
+            {
+              "x": 0.683793,
+              "y": 0.922977
+            }
+          ]
+        },
+        {
+          "id": "to-4",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "4",
+          "targetSpawnId": "spawn-from-5",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.776738,
+              "y": 0.954037
+            },
+            {
+              "x": 0.897617,
+              "y": 0.868649
+            },
+            {
+              "x": 1.121968,
+              "y": 0.993474
+            },
+            {
+              "x": 0.252062,
+              "y": 0.997445
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-6",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.499162,
+              "y": 0.707384
+            },
+            {
+              "x": 0.513162,
+              "y": 0.726384
+            },
+            {
+              "x": 0.499162,
+              "y": 0.745384
+            },
+            {
+              "x": 0.485162,
+              "y": 0.726384
+            }
+          ]
+        },
+        {
+          "id": "to-6",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "6",
+          "targetSpawnId": "spawn-from-5",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.609802,
+              "y": 0.542879
+            },
+            {
+              "x": 0.655322,
+              "y": 0.540474
+            },
+            {
+              "x": 0.739327,
+              "y": 0.705171
+            },
+            {
+              "x": 0.654275,
+              "y": 0.695656
+            }
+          ]
+        },
+        {
+          "id": "zhuzi",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.281221,
+              "y": 0.833278
+            },
+            {
+              "x": 0.347086,
+              "y": 0.816356
+            },
+            {
+              "x": 0.34347,
+              "y": 0.740658
+            },
+            {
+              "x": 0.298355,
+              "y": 0.748937
+            }
+          ]
+        },
+        {
+          "id": "zhuzi-001",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.65831,
+              "y": 0.757476
+            },
+            {
+              "x": 0.697675,
+              "y": 0.74799
+            },
+            {
+              "x": 0.620604,
+              "y": 0.703278
+            },
+            {
+              "x": 0.585716,
+              "y": 0.709078
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -413.153,
+        "nearVisualHeight": 400,
+        "horizonY": -15.074
+      },
+      "worldSize": {
+        "width": 1365,
+        "height": 1024
+      }
+    },
+    "6": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.049035,
+              "y": 0.814433
+            },
+            {
+              "x": 0.996557,
+              "y": 0.811663
+            },
+            {
+              "x": 0.638149,
+              "y": 0.563485
+            },
+            {
+              "x": 0.996614,
+              "y": 0.528512
+            },
+            {
+              "x": 0.71472,
+              "y": 0.537588
+            },
+            {
+              "x": 0.324235,
+              "y": 0.529645
+            },
+            {
+              "x": 0.11909,
+              "y": 0.52454
+            },
+            {
+              "x": 0.40064,
+              "y": 0.553199
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-5",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.412308,
+              "y": 0.525579
+            },
+            {
+              "x": 0.419916,
+              "y": 0.544579
+            },
+            {
+              "x": 0.412308,
+              "y": 0.563579
+            },
+            {
+              "x": 0.404272,
+              "y": 0.543715
+            }
+          ]
+        },
+        {
+          "id": "to-5",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "5",
+          "targetSpawnId": "spawn-from-6",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.323171,
+              "y": 0.517288
+            },
+            {
+              "x": 0.343211,
+              "y": 0.519018
+            },
+            {
+              "x": 0.327263,
+              "y": 0.548112
+            },
+            {
+              "x": 0.301475,
+              "y": 0.542927
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-7",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.894848,
+              "y": 0.527089
+            },
+            {
+              "x": 0.914201,
+              "y": 0.532657
+            },
+            {
+              "x": 0.893976,
+              "y": 0.543573
+            },
+            {
+              "x": 0.879382,
+              "y": 0.531764
+            }
+          ]
+        },
+        {
+          "id": "to-7",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "7",
+          "targetSpawnId": "spawn-from-6",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.947043,
+              "y": 0.517876
+            },
+            {
+              "x": 0.990216,
+              "y": 0.504894
+            },
+            {
+              "x": 1.001351,
+              "y": 0.538312
+            },
+            {
+              "x": 0.953292,
+              "y": 0.541769
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -382.227,
+        "nearVisualHeight": 400,
+        "horizonY": 8.709
+      },
+      "worldSize": {
+        "width": 2464,
+        "height": 1024
+      }
+    },
+    "7": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": -0.003026,
+              "y": 0.621674
+            },
+            {
+              "x": -0.001277,
+              "y": 1.001682
+            },
+            {
+              "x": 1,
+              "y": 1
+            },
+            {
+              "x": 0.997687,
+              "y": 0.469834
+            },
+            {
+              "x": 0.435573,
+              "y": 0.417919
+            },
+            {
+              "x": 0.193877,
+              "y": 0.365958
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-6",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.814412,
+              "y": 0.896563
+            },
+            {
+              "x": 0.828412,
+              "y": 0.915563
+            },
+            {
+              "x": 0.814412,
+              "y": 0.934563
+            },
+            {
+              "x": 0.800412,
+              "y": 0.915563
+            }
+          ]
+        },
+        {
+          "id": "to-6",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "6",
+          "targetSpawnId": "spawn-from-7",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.636532,
+              "y": 0.872306
+            },
+            {
+              "x": 0.787182,
+              "y": 0.952043
+            },
+            {
+              "x": 0.994783,
+              "y": 1.004427
+            },
+            {
+              "x": 0.539768,
+              "y": 1.006772
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-8",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.330153,
+              "y": 0.383424
+            },
+            {
+              "x": 0.344153,
+              "y": 0.402424
+            },
+            {
+              "x": 0.330153,
+              "y": 0.421424
+            },
+            {
+              "x": 0.316153,
+              "y": 0.402424
+            }
+          ]
+        },
+        {
+          "id": "to-8",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "8",
+          "targetSpawnId": "spawn-from-7",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.197923,
+              "y": 0.323757
+            },
+            {
+              "x": 0.22499,
+              "y": 0.340635
+            },
+            {
+              "x": 0.194241,
+              "y": 0.391361
+            },
+            {
+              "x": 0.165365,
+              "y": 0.368455
+            }
+          ]
+        },
+        {
+          "id": "obstacle-lawn",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": -0.003573,
+              "y": 1.002402
+            },
+            {
+              "x": -0.001735,
+              "y": 0.619146
+            },
+            {
+              "x": 0.187857,
+              "y": 0.373324
+            },
+            {
+              "x": 0.434251,
+              "y": 0.428007
+            },
+            {
+              "x": 0.897413,
+              "y": 0.468472
+            },
+            {
+              "x": 0.803593,
+              "y": 0.506027
+            },
+            {
+              "x": 0.802689,
+              "y": 0.584899
+            },
+            {
+              "x": 0.536344,
+              "y": 1.006562
+            }
+          ]
+        },
+        {
+          "id": "obstacle-l",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.998437,
+              "y": 0.565932
+            },
+            {
+              "x": 0.997974,
+              "y": 0.463502
+            },
+            {
+              "x": 0.959052,
+              "y": 0.462669
+            },
+            {
+              "x": 0.914185,
+              "y": 0.512988
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -496.1,
+        "nearVisualHeight": 400,
+        "horizonY": 85.007,
+        "keepY": 27.372
+      },
+      "worldSize": {
+        "width": 1365,
+        "height": 1024
+      }
+    },
+    "8": {
+      "regions": [
+        {
+          "id": "walk-main",
+          "type": 0,
+          "typeName": "Walkable",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0,
+              "y": 1
+            },
+            {
+              "x": 0.931419,
+              "y": 0.996028
+            },
+            {
+              "x": 0.664544,
+              "y": 0.549648
+            },
+            {
+              "x": 0.750535,
+              "y": 0.54844
+            },
+            {
+              "x": 0.717148,
+              "y": 0.542234
+            },
+            {
+              "x": 0.260156,
+              "y": 0.534996
+            },
+            {
+              "x": 0.000086,
+              "y": 0.53258
+            }
+          ]
+        },
+        {
+          "id": "spawn-from-7",
+          "type": 5,
+          "typeName": "Spawn",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.639576,
+              "y": 0.527253
+            },
+            {
+              "x": 0.653576,
+              "y": 0.546253
+            },
+            {
+              "x": 0.639576,
+              "y": 0.565253
+            },
+            {
+              "x": 0.625576,
+              "y": 0.546253
+            }
+          ]
+        },
+        {
+          "id": "to-7",
+          "type": 3,
+          "typeName": "Transition",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "7",
+          "targetSpawnId": "spawn-from-8",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.705382,
+              "y": 0.539038
+            },
+            {
+              "x": 0.73564,
+              "y": 0.531259
+            },
+            {
+              "x": 0.764561,
+              "y": 0.550848
+            },
+            {
+              "x": 0.726132,
+              "y": 0.549982
+            }
+          ]
+        },
+        {
+          "id": "obstacle-railing",
+          "type": 1,
+          "typeName": "Obstacle",
+          "enabled": true,
+          "priority": 0,
+          "handlerId": "",
+          "prompt": "",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.000573,
+              "y": 0.538049
+            },
+            {
+              "x": 0.19269,
+              "y": 0.542228
+            },
+            {
+              "x": 0.423193,
+              "y": 0.545096
+            },
+            {
+              "x": 0.000705,
+              "y": 0.594095
+            }
+          ]
+        }
+      ],
+      "perspective": {
+        "nearY": -401.146,
+        "nearVisualHeight": 400,
+        "horizonY": -5.468
+      },
+      "worldSize": {
+        "width": 1365,
+        "height": 1024
+      }
+    }
+  }
+}

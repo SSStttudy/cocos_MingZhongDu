@@ -50,6 +50,27 @@ type ResolvedEntryPoint = {
     triggerRadius: number;
 };
 
+type LocationSceneEntry = {
+    locationId: string;
+    cocosScene: string;
+    sceneId: string;
+    spawnId: string;
+};
+
+const LOCATION_SCENE_ENTRIES: Record<string, LocationSceneEntry> = {
+    'location-1-west-01': { locationId: 'visitor-center', cocosScene: 'LocationTemplate', sceneId: 'entrance-gate', spawnId: 'spawn-1-west-01' },
+    'location-1-east-01': { locationId: 'visitor-center', cocosScene: 'LocationTemplate', sceneId: 'main-road', spawnId: 'spawn-1-east-01' },
+    'location-2-north-01': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '1', spawnId: 'spawn-overworld-north-01' },
+    'location-2-north-02': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '1', spawnId: 'spawn-overworld-north-02' },
+    'location-2-east-01': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '3', spawnId: 'spawn-overworld-east-01' },
+    'location-2-east-02': { locationId: 'location-2', cocosScene: 'Location2', sceneId: '3', spawnId: 'spawn-overworld-east-02' },
+    'location-2-5-west-01': { locationId: 'location-2-5', cocosScene: 'Location2_5', sceneId: '1', spawnId: 'spawn-overworld-west-01' },
+    'location-2-5-east-01': { locationId: 'location-2-5', cocosScene: 'Location2_5', sceneId: '1', spawnId: 'spawn-overworld-east-01' },
+    'location-3-north-01': { locationId: 'location-3', cocosScene: 'Location3', sceneId: '1', spawnId: 'spawn-overworld-north-01' },
+    'location-4-west-01': { locationId: 'location-4', cocosScene: 'Location4', sceneId: 'main', spawnId: 'spawn-overworld-west-01' },
+    'location-4-east-01': { locationId: 'location-4', cocosScene: 'Location4', sceneId: 'main', spawnId: 'spawn-overworld-east-01' },
+};
+
 @ccclass('OverworldBootstrap')
 @executeInEditMode
 export class OverworldBootstrap extends Component implements OverworldTourHost {
@@ -66,6 +87,9 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     private playerAnimator!: DirectionalWalkAnimator;
     private joystick!: Node;
     private joystickKnob!: Node;
+    private actionButtons!: Node;
+    private interactionButton!: Node;
+    private speedButton!: Node;
     private entryPanel!: Node;
     private hintLabel!: Label;
     private playerPosition = new Vec2(OVERWORLD_PLAYER_START.x, OVERWORLD_PLAYER_START.y);
@@ -74,6 +98,8 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     private joystickInput = new Vec2();
     private pressedKeys = new Set<KeyCode>();
     private activeTouchId: number | null = null;
+    private speedTouchId: number | null = null;
+    private speedBoostHeld = false;
     private pausedByEntrance = false;
     private entrancePositions = new Map<string, Vec2>();
     private entranceTitles = new Map<string, string>();
@@ -102,6 +128,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         this.createWorld();
         this.createHud();
         this.createJoystick();
+        this.createActionButtons();
         this.createEntryPanel();
         this.tourGuide = this.node.addComponent(OverworldTourGuide);
         this.tourGuide.initialize(this);
@@ -110,6 +137,8 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     }
 
     onDestroy(): void {
+        this.speedBoostHeld = false;
+        this.speedTouchId = null;
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
     }
@@ -609,6 +638,87 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         this.joystick.on(Node.EventType.TOUCH_CANCEL, this.onJoystickEnd, this);
     }
 
+    private createActionButtons(): void {
+        this.actionButtons = new Node('ActionButtons');
+        this.actionButtons.layer = Layers.Enum.UI_2D;
+        this.actionButtons.addComponent(UITransform).setContentSize(270, 190);
+        this.node.addChild(this.actionButtons);
+
+        this.interactionButton = this.createRoundActionButton('InteractionButton', '交互', 112);
+        this.interactionButton.setPosition(58, -34, 0);
+        this.interactionButton.on(Node.EventType.TOUCH_END, this.onInteractionButton, this);
+        this.actionButtons.addChild(this.interactionButton);
+
+        this.speedButton = this.createRoundActionButton('SpeedButton', '疾行\n×2', 92);
+        this.speedButton.setPosition(-50, 35, 0);
+        this.speedButton.on(Node.EventType.TOUCH_START, this.onSpeedStart, this);
+        this.speedButton.on(Node.EventType.TOUCH_END, this.onSpeedEnd, this);
+        this.speedButton.on(Node.EventType.TOUCH_CANCEL, this.onSpeedEnd, this);
+        this.actionButtons.addChild(this.speedButton);
+    }
+
+    private createRoundActionButton(name: string, text: string, size: number): Node {
+        const node = new Node(name);
+        node.layer = Layers.Enum.UI_2D;
+        node.addComponent(UITransform).setContentSize(size, size);
+        const graphics = node.addComponent(Graphics);
+        graphics.fillColor = new Color(25, 35, 31, 125);
+        graphics.strokeColor = new Color(255, 241, 193, 190);
+        graphics.lineWidth = 4;
+        graphics.circle(0, 0, size * 0.5);
+        graphics.fill();
+        graphics.stroke();
+        graphics.fillColor = new Color(234, 197, 103, 230);
+        graphics.strokeColor = new Color(72, 69, 48, 255);
+        graphics.lineWidth = 3;
+        graphics.circle(0, 0, size * 0.36);
+        graphics.fill();
+        graphics.stroke();
+        const labelNode = new Node('ButtonLabel');
+        labelNode.layer = Layers.Enum.UI_2D;
+        labelNode.addComponent(UITransform).setContentSize(size - 10, size - 10);
+        const label = labelNode.addComponent(Label);
+        label.string = text;
+        label.fontSize = size >= 100 ? 21 : 17;
+        label.lineHeight = size >= 100 ? 25 : 20;
+        label.color = new Color(72, 69, 48, 255);
+        label.horizontalAlign = Label.HorizontalAlign.CENTER;
+        label.verticalAlign = Label.VerticalAlign.CENTER;
+        node.addChild(labelNode);
+        return node;
+    }
+
+    private onInteractionButton(event: EventTouch): void {
+        event.propagationStopped = true;
+        if (this.pausedByEntrance) return;
+        let nearest: ResolvedEntryPoint | null = null;
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        for (const point of this.entryPoints) {
+            const distance = Vec2.distance(point.position, this.playerPosition);
+            if (distance <= point.triggerRadius + 30 && distance < nearestDistance) {
+                nearest = point;
+                nearestDistance = distance;
+            }
+        }
+        if (nearest) this.traverseLocation(nearest);
+    }
+
+    private onSpeedStart(event: EventTouch): void {
+        event.propagationStopped = true;
+        if (this.speedTouchId !== null || this.pausedByEntrance) return;
+        this.speedTouchId = event.getID();
+        this.speedBoostHeld = true;
+        this.speedButton.setScale(0.9, 0.9, 1);
+    }
+
+    private onSpeedEnd(event: EventTouch): void {
+        event.propagationStopped = true;
+        if (event.getID() !== this.speedTouchId) return;
+        this.speedTouchId = null;
+        this.speedBoostHeld = false;
+        this.speedButton.setScale(1, 1, 1);
+    }
+
     private createEntryPanel(): void {
         this.entryPanel = new Node('EntryPlaceholder');
         this.entryPanel.layer = Layers.Enum.UI_2D;
@@ -734,18 +844,20 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         );
         if (this.moveInput.lengthSqr() > 1) this.moveInput.normalize();
         if (this.moveInput.lengthSqr() < 0.001) {
-            this.playerAnimator?.setMovement(this.moveInput, false);
+            this.playerAnimator?.setMovement(this.moveInput, false, false);
             return;
         }
 
         const previousPosition = this.playerPosition.clone();
-        const step = this.moveInput.clone().multiplyScalar(this.moveSpeed * deltaTime);
+        const step = this.moveInput.clone().multiplyScalar(
+            this.moveSpeed * (this.speedBoostHeld ? 2 : 1) * deltaTime,
+        );
         const nextX = new Vec2(this.playerPosition.x + step.x, this.playerPosition.y);
         if (this.canStandAt(nextX)) this.playerPosition.x = nextX.x;
         const nextY = new Vec2(this.playerPosition.x, this.playerPosition.y + step.y);
         if (this.canStandAt(nextY)) this.playerPosition.y = nextY.y;
         const moved = Vec2.distance(previousPosition, this.playerPosition) > 0.01;
-        this.playerAnimator?.setMovement(this.moveInput, moved);
+        this.playerAnimator?.setMovement(this.moveInput, moved, this.speedBoostHeld);
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
         this.playerShadow.setPosition(this.playerPosition.x, this.playerPosition.y + 1, 0);
         this.checkEntrance(previousPosition);
@@ -813,24 +925,9 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         };
         if (this.tourGuide?.handleEntrance(tourSource)) return;
 
-        if (source.entrance.id === 'location-1') {
-            const localEntryId = source.id.replace(/^location-/, '');
-            const entersFromWest = /-west-\d+$/.test(source.id);
-            LocationTransitionState.enterLocation(
-                'visitor-center',
-                entersFromWest ? 'entrance-gate' : 'main-road',
-                `spawn-${localEntryId}`,
-            );
-            director.loadScene('LocationTemplate');
-            return;
-        }
+        if (this.enterLocationFromEntry(source)) return;
 
-        const alternatives = this.entryPoints.filter((point) => (
-            point.entrance.id === source.entrance.id && point.id !== source.id
-        ));
-        const destination = alternatives.length > 0
-            ? alternatives[Math.floor(Math.random() * alternatives.length)]
-            : source;
+        const destination = source;
 
         const center = this.getEntrancePosition(destination.entrance);
         let nearestRoute: OverworldRouteSegment | null = null;
@@ -875,9 +972,24 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         );
     }
 
+    private enterLocationFromEntry(source: ResolvedEntryPoint): boolean {
+        const target = LOCATION_SCENE_ENTRIES[source.id];
+        if (!target) return false;
+        LocationTransitionState.enterLocation(
+            target.locationId,
+            target.sceneId,
+            target.spawnId,
+        );
+        director.loadScene(target.cocosScene);
+        return true;
+    }
+
     private openEntryPanel(point: ResolvedEntryPoint): void {
         this.activeEntryPoint = point;
         this.pausedByEntrance = true;
+        this.speedBoostHeld = false;
+        this.speedTouchId = null;
+        this.speedButton?.setScale(1, 1, 1);
         this.joystickInput.set(0, 0);
         this.joystickKnob.setPosition(0, 0, 0);
         const title = this.entryPanel.getChildByName('EntryTitle')!.getComponent(Label)!;
@@ -927,6 +1039,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         this.node.getChildByName('MapTitle')?.setPosition(-visible.width * 0.5 + 300, visible.height * 0.5 - 48, 0);
         this.node.getChildByName('ControlHint')?.setPosition(-visible.width * 0.5 + 330, visible.height * 0.5 - 94, 0);
         this.joystick?.setPosition(-visible.width * 0.5 + 132, -visible.height * 0.5 + 132, 0);
+        this.actionButtons?.setPosition(visible.width * 0.5 - 164, -visible.height * 0.5 + 122, 0);
         this.entryPanel?.setPosition(0, 0, 0);
     }
 
@@ -999,7 +1112,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
             }
         }
 
-        this.mergeStonePierNortheastEntry();
+        this.splitStonePierNortheastEntry();
     }
 
     private restorePlayerFromLocation(): boolean {
@@ -1017,47 +1130,43 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         return true;
     }
 
-    private mergeStonePierNortheastEntry(): void {
+    private splitStonePierNortheastEntry(): void {
         const stoneEntries = this.entryPoints.filter((point) => point.entrance.id === 'location-2');
-        const center = stoneEntries.length > 0
-            ? this.getEntrancePosition(stoneEntries[0].entrance)
-            : null;
-        const upperEntries = center
-            ? stoneEntries
-                .filter((point) => point.position.y >= center.y)
-                .sort((a, b) => b.position.y - a.position.y)
-            : [];
+        if (stoneEntries.length === 0) return;
 
-        // 正交化后右上角的两条道路交点会先被几何去重，此时已经只有 3 个入口。
-        // 只把最靠右的上方入口改名为 northeast，不能再次合并，否则会误删为 2 个。
-        if (stoneEntries.length === 3) {
-            const northeast = [...upperEntries].sort((a, b) => b.position.x - a.position.x)[0];
-            if (!northeast) return;
-            this.entryPoints = this.entryPoints.filter((point) => point !== northeast);
-            this.entryPoints.push({
-                ...northeast,
-                id: 'location-2-northeast-01',
-                imageKey: 'locations/location-2/northeast-01',
-            });
-            return;
-        }
+        const existingEast = stoneEntries.find(
+            (point) => point.id === 'location-2-east-02',
+        );
+        const existingNorth = stoneEntries.find(
+            (point) => point.id === 'location-2-north-01',
+        );
+        if (existingEast && existingNorth) return;
 
-        const legacyEast = this.entryPoints.find((point) => point.id === 'location-2-east-02');
-        const legacyNorth = this.entryPoints.find((point) => point.id === 'location-2-north-01');
-        const east = legacyEast;
-        const north = legacyNorth;
-        if (!east || !north || east === north) return;
+        const eastReference = stoneEntries.find(
+            (point) => point.id === 'location-2-east-01',
+        );
+        const northReference = stoneEntries.find(
+            (point) => point.id === 'location-2-north-02',
+        );
+        const corner = existingNorth ?? stoneEntries.find(
+            (point) => point.id === 'location-2-northeast-01',
+        );
+        if (!eastReference || !northReference || !corner) return;
 
-        this.entryPoints = this.entryPoints.filter((point) => point !== east && point !== north);
+        // 圆与右上角两条正交道路的交点距离很近，几何去重会把它们压成一个点。
+        // 用现有东侧入口的 X、北侧入口的 Y，把该点分别投影回两条道路。
+        this.entryPoints = this.entryPoints.filter((point) => point !== corner);
         this.entryPoints.push({
-            id: 'location-2-northeast-01',
-            imageKey: 'locations/location-2/northeast-01',
-            entrance: east.entrance,
-            position: new Vec2(
-                (east.position.x + north.position.x) * 0.5,
-                (east.position.y + north.position.y) * 0.5,
-            ),
-            triggerRadius: Math.max(east.triggerRadius, north.triggerRadius),
+            ...corner,
+            id: 'location-2-north-01',
+            imageKey: 'locations/location-2/north-01',
+            position: new Vec2(corner.position.x, northReference.position.y),
+        });
+        this.entryPoints.push({
+            ...corner,
+            id: 'location-2-east-02',
+            imageKey: 'locations/location-2/east-02',
+            position: new Vec2(eastReference.position.x, corner.position.y),
         });
     }
 
@@ -1154,6 +1263,9 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     setTourPaused(paused: boolean): void {
         this.pausedByEntrance = paused;
         if (paused) {
+            this.speedBoostHeld = false;
+            this.speedTouchId = null;
+            this.speedButton?.setScale(1, 1, 1);
             this.joystickInput.set(0, 0);
             this.keyboardInput.set(0, 0);
             this.joystickKnob?.setPosition(0, 0, 0);
@@ -1162,6 +1274,9 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     }
 
     finishTourCheckpoint(source: OverworldTourEntranceContext, targetEntranceId: string): void {
+        const resolvedSource = this.entryPoints.find((point) => point.id === source.id);
+        if (resolvedSource && this.enterLocationFromEntry(resolvedSource)) return;
+
         let nearestRoute: OverworldRouteSegment | null = null;
         let nearestDistance = Number.POSITIVE_INFINITY;
         for (const route of this.routeSegments) {
@@ -1192,8 +1307,12 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         this.activeEntryIds.clear();
     }
 
-    getTourPathToEntrance(entranceId: string): Vec2[] {
-        const targets = this.entryPoints.filter((point) => point.entrance.id === entranceId);
+    getTourPathToEntrance(entranceId: string, entryPointId?: string): Vec2[] {
+        const groupedTargets = this.entryPoints.filter((point) => point.entrance.id === entranceId);
+        const exactTarget = entryPointId
+            ? groupedTargets.find((point) => point.id === entryPointId)
+            : undefined;
+        const targets = exactTarget ? [exactTarget] : groupedTargets;
         if (targets.length === 0 || this.routeSegments.length === 0) return [];
         const target = targets.reduce((best, candidate) => (
             Vec2.distance(candidate.position, this.playerPosition)
