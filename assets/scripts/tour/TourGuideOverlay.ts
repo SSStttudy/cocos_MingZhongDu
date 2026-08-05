@@ -33,7 +33,12 @@ export class TourGuideOverlay {
     private checkpointPanel: Node;
     private checkpointTitle: Label;
     private checkpointText: Label;
+    private checkpointContinueButton: Node;
+    private checkpointSecondaryButton: Node;
+    private contextActionButton: Node;
     private continueAction: (() => void) | null = null;
+    private secondaryAction: (() => void) | null = null;
+    private contextAction: (() => void) | null = null;
     private minimized = false;
     private portraitRequest = 0;
     private portraitDragDistance = 0;
@@ -87,10 +92,18 @@ export class TourGuideOverlay {
         this.checkpointTitle.node.setPosition(0, 88);
         this.checkpointText = this.createLabel('', 20, CREAM, card, 470, 110);
         this.checkpointText.node.setPosition(0, 12);
-        const continueButton = this.createButton('CheckpointContinue', '继续游览', card, 220, 52);
-        continueButton.setPosition(0, -102);
-        continueButton.on(Node.EventType.TOUCH_END, this.onContinue, this);
+        this.checkpointContinueButton = this.createButton('CheckpointContinue', '继续游览', card, 220, 52);
+        this.checkpointContinueButton.setPosition(0, -102);
+        this.checkpointContinueButton.on(Node.EventType.TOUCH_END, this.onContinue, this);
+        this.checkpointSecondaryButton = this.createButton('CheckpointSecondary', '返回大地图', card, 190, 48);
+        this.checkpointSecondaryButton.setPosition(125, -102);
+        this.checkpointSecondaryButton.on(Node.EventType.TOUCH_END, this.onSecondary, this);
+        this.checkpointSecondaryButton.active = false;
         this.checkpointPanel.active = false;
+
+        this.contextActionButton = this.createButton('TourContextAction', '查看', this.root, 132, 52);
+        this.contextActionButton.on(Node.EventType.TOUCH_END, this.onContextAction, this);
+        this.contextActionButton.active = false;
 
         this.layout(true);
     }
@@ -108,7 +121,9 @@ export class TourGuideOverlay {
         this.root.getComponent(UITransform)!.setContentSize(visible);
         this.objectiveCard.setPosition(-visible.width * 0.5 + 205, visible.height * 0.5 - 70);
         this.minimizeButton.setPosition(-visible.width * 0.5 + 400, visible.height * 0.5 - 48);
-        this.speechGroup.setPosition(visible.width * 0.5 - 250, -visible.height * 0.5 + 112);
+        // 右下角留给固定交互与疾行按键。
+        this.speechGroup.setPosition(visible.width * 0.5 - 270, -visible.height * 0.5 + 250);
+        this.contextActionButton.setPosition(0, -visible.height * 0.5 + 72);
         this.placeSpeechBubble();
         this.checkpointPanel.getComponent(UITransform)!.setContentSize(visible);
         const dim = this.checkpointPanel.getChildByName('CheckpointDim');
@@ -203,16 +218,46 @@ export class TourGuideOverlay {
         this.portraitDragDistance = 0;
     }
 
-    showCheckpoint(title: string, text: string, onContinue: () => void): void {
+    showCheckpoint(
+        title: string,
+        text: string,
+        onContinue: () => void,
+        continueLabel = '继续游览',
+        secondary?: { label: string; action: () => void },
+    ): void {
         this.continueAction = onContinue;
+        this.secondaryAction = secondary?.action ?? null;
         this.checkpointTitle.string = title;
         this.checkpointText.string = text;
+        const continueText = this.checkpointContinueButton
+            .getChildByName('ButtonLabel')?.getComponent(Label);
+        if (continueText) continueText.string = continueLabel;
+        this.checkpointSecondaryButton.active = Boolean(secondary);
+        const secondaryText = this.checkpointSecondaryButton
+            .getChildByName('ButtonLabel')?.getComponent(Label);
+        if (secondaryText && secondary) secondaryText.string = secondary.label;
+        this.checkpointContinueButton.setPosition(secondary ? -125 : 0, -102);
         this.checkpointPanel.active = true;
         this.checkpointPanel.setSiblingIndex(this.root.children.length - 1);
     }
 
+    setContextAction(label: string, action: (() => void) | null): void {
+        this.contextAction = action;
+        // 实际触发统一交给右下角固定“交互”键；保留节点仅兼容旧布局。
+        this.contextActionButton.active = false;
+        const text = this.contextActionButton.getChildByName('ButtonLabel')?.getComponent(Label);
+        if (text) text.string = label;
+    }
+
+    triggerContextAction(): boolean {
+        if (!this.contextAction) return false;
+        this.contextAction();
+        return true;
+    }
+
     hideCheckpoint(): void {
         this.continueAction = null;
+        this.secondaryAction = null;
         this.checkpointPanel.active = false;
     }
 
@@ -233,6 +278,18 @@ export class TourGuideOverlay {
         const action = this.continueAction;
         this.hideCheckpoint();
         action?.();
+    }
+
+    private onSecondary(event?: EventTouch): void {
+        if (event) event.propagationStopped = true;
+        const action = this.secondaryAction;
+        this.hideCheckpoint();
+        action?.();
+    }
+
+    private onContextAction(event?: EventTouch): void {
+        if (event) event.propagationStopped = true;
+        this.contextAction?.();
     }
 
     private createNode(name: string, parent: Node): Node {

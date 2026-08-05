@@ -24,6 +24,7 @@ import { EDITOR } from 'cc/env';
 import { LocationTransitionState } from '../location/LocationTransitionState';
 import { GameSettings, loadSettings, saveSettings } from './GameSettings';
 import { TourProgressStore } from '../tour/TourProgressStore';
+import { getLocationCocosSceneName } from '../tour/TourConfig';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -485,7 +486,7 @@ export class StartScreenController extends Component {
             const anchor = TourProgressStore.load().resumeAnchor;
             if (anchor.kind === 'location') {
                 LocationTransitionState.enterLocation(anchor.locationId, anchor.sceneId, anchor.spawnId);
-                sceneName = 'LocationTemplate';
+                sceneName = getLocationCocosSceneName(anchor.locationId);
             } else if (anchor.entryId) {
                 LocationTransitionState.returnToOverworld(anchor.entryId);
             }

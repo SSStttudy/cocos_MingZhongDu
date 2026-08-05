@@ -1,0 +1,110 @@
+{
+  "frame_count_per_direction": 8,
+  "directions": [
+    {
+      "direction": "down",
+      "source": "art-review\\video-generation-kit\\modern-explorer\\run-source\\front.mp4",
+      "fps": 24.0,
+      "cycle_start_frame": 18,
+      "cycle_period_frames": 22,
+      "source_frame_indices": [
+        18,
+        21,
+        24,
+        26,
+        29,
+        32,
+        34,
+        37
+      ],
+      "output_frame_duration_seconds": 0.11458333333333333,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ]
+    },
+    {
+      "direction": "up",
+      "source": "art-review\\video-generation-kit\\modern-explorer\\run-source\\back.mp4",
+      "fps": 24.0,
+      "cycle_start_frame": 16,
+      "cycle_period_frames": 24,
+      "source_frame_indices": [
+        16,
+        19,
+        22,
+        25,
+        28,
+        31,
+        34,
+        37
+      ],
+      "output_frame_duration_seconds": 0.125,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ]
+    },
+    {
+      "direction": "right",
+      "source": "art-review\\video-generation-kit\\modern-explorer\\run-source\\right.mp4",
+      "fps": 24.0,
+      "cycle_start_frame": 22,
+      "cycle_period_frames": 20,
+      "source_frame_indices": [
+        22,
+        24,
+        27,
+        30,
+        32,
+        34,
+        37,
+        40
+      ],
+      "output_frame_duration_seconds": 0.10416666666666667,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ]
+    },
+    {
+      "direction": "left",
+      "source": "horizontal mirror of right",
+      "fps": 24.0,
+      "cycle_start_frame": 22,
+      "cycle_period_frames": 20,
+      "source_frame_indices": [
+        22,
+        24,
+        27,
+        30,
+        32,
+        34,
+        37,
+        40
+      ],
+      "output_frame_duration_seconds": 0.10416666666666667,
+      "canvas": [
+        384,
+        512
+      ],
+      "anchor_normalized": [
+        0.5,
+        0.0625
+      ],
+      "mirrored_from": "right"
+    }
+  ]
+}

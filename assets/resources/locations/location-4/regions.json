@@ -207,6 +207,26 @@
               "y": 1.000865
             }
           ]
+        },
+        {
+          "id": "interaction-west-gate",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 10,
+          "handlerId": "tour-west-gate",
+          "prompt": "查看西侧城垣",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.39, "y": 0.48 },
+            { "x": 0.92, "y": 0.47 },
+            { "x": 0.94, "y": 0.59 },
+            { "x": 0.41, "y": 0.61 }
+          ]
         }
       ],
       "perspective": {
