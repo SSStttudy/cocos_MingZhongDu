@@ -372,6 +372,26 @@
               "y": 1.000709
             }
           ]
+        },
+        {
+          "id": "interaction-stone-base",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 10,
+          "handlerId": "stone-base-restoration",
+          "prompt": "查看石础历史复原",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.12, "y": 0.58 },
+            { "x": 0.56, "y": 0.59 },
+            { "x": 0.56, "y": 0.91 },
+            { "x": 0.12, "y": 0.91 }
+          ]
         }
       ],
       "perspective": {

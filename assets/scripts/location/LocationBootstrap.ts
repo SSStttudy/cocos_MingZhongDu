@@ -43,6 +43,7 @@ import {
 } from '../tour/LocationTourGuide';
 import { TourProgressStore } from '../tour/TourProgressStore';
 import { OcclusionLineShape } from './editor/OcclusionLineShape';
+import { StoneBaseRestorationViewer } from '../restoration/StoneBaseRestorationViewer';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -174,6 +175,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private cameraPosition = new Vec2();
     private cameraInitialized = false;
     private tourGuide: LocationTourGuide | null = null;
+    private restorationViewer: StoneBaseRestorationViewer | null = null;
     private tourPaused = false;
 
     onLoad(): void {
@@ -206,6 +208,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.createHud();
         this.createJoystick();
         this.createActionButtons();
+        this.restorationViewer = this.node.addComponent(StoneBaseRestorationViewer);
         this.tourGuide = this.node.addComponent(LocationTourGuide);
         this.tourGuide.initialize(this);
         this.bindInput();
@@ -263,6 +266,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private renderRuntimeScene(sceneId: string, spawn?: Vec2): void {
+        this.restorationViewer?.hide();
         this.currentSceneId = sceneId;
         this.sceneConfig = this.config.scenes[sceneId];
         this.capturePlayerPerspectiveCalibration();
