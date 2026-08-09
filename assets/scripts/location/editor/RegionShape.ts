@@ -17,7 +17,6 @@ export enum RegionType {
     Obstacle = 1,
     Interaction = 2,
     Transition = 3,
-    Occlusion = 4,
     Spawn = 5,
 }
 
@@ -142,8 +141,6 @@ export class RegionShape extends Component {
                 return { fill: new Color(238, 191, 55, 82), stroke: new Color(169, 119, 19, 245) };
             case RegionType.Transition:
                 return { fill: new Color(56, 148, 222, 82), stroke: new Color(28, 91, 153, 245) };
-            case RegionType.Occlusion:
-                return { fill: new Color(151, 90, 203, 72), stroke: new Color(99, 50, 147, 245) };
             case RegionType.Spawn:
                 return { fill: new Color(71, 176, 231, 105), stroke: new Color(20, 105, 155, 255) };
             default:

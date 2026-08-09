@@ -22,13 +22,24 @@ module.exports = Editor.Panel.define({
     <small><code>PerspectiveNear</code> 的下边缘是最近点，矩形高度是人物高度；<code>PerspectiveHorizon</code> 是视觉终线。可选的 <code>PerspectiveKeep</code> 表示人物超过该 Y 后保持缩放。标定节点只需上下调整 Y。</small>
     <small>切换后，背景与区域会一起切换。每张照片分镜独立保存。</small>
   </section>
+  <section class="line-section">
+    <h3>前景遮挡线（独立两点）</h3>
+    <select id="line-list" size="5"></select>
+    <button id="focus-line">在层级管理器中选中遮挡线</button>
+    <small>展开 OcclusionLine 节点，只拖动 Point-A 和 Point-B。黄色线段及判断位置会立即同步。</small>
+    <label>遮挡线 ID<input id="line-id" placeholder="例如 gate-right"></label>
+    <label>前景资源名<input id="line-asset" placeholder="例如 3-gate-foreground"></label>
+    <label class="check"><input id="line-enabled" type="checkbox" checked> 启用遮挡线</label>
+    <div class="button-grid"><button id="create-line">新建两点遮挡线</button><button id="apply-line" class="primary">应用遮挡线属性</button></div>
+    <button id="delete-line" class="danger">删除当前遮挡线</button>
+  </section>
   <section>
     <h3>新建规则多边形</h3>
     <label>区域 ID<input id="new-id" value="walk-main"></label>
     <label>区域类型<select id="new-type">
       <option value="0">可行走 Walkable</option><option value="1">障碍 Obstacle</option>
       <option value="2">交互 Interaction</option><option value="3">切景 Transition</option>
-      <option value="4">遮挡 Occlusion</option><option value="5">出生点 Spawn</option>
+      <option value="5">出生点 Spawn</option>
     </select></label>
     <div class="row"><label>边数<input id="new-sides" type="number" min="3" max="32" value="4"></label>
     <label>半径<input id="new-radius" type="number" min="20" max="600" value="120"></label></div>
@@ -48,7 +59,7 @@ module.exports = Editor.Panel.define({
     <small>统一使用小写英文与短横线；修改后会同步层级节点名称。</small>
     <label>类型<select id="edit-type">
       <option value="0">可行走</option><option value="1">障碍</option><option value="2">交互</option>
-      <option value="3">切景</option><option value="4">遮挡</option>
+      <option value="3">切景</option>
       <option value="5">出生点</option>
     </select></label>
     <label>优先级<input id="priority" type="number" value="0"></label>
@@ -81,7 +92,7 @@ module.exports = Editor.Panel.define({
 header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 header strong { font-size:16px; }
 section { border:1px solid var(--color-normal-border); border-radius:6px; padding:10px; margin-bottom:10px; background:var(--color-normal-fill); }
-.scene-section { border-color:#5a85aa; } h3 { margin:0 0 8px; font-size:14px; }
+.scene-section { border-color:#5a85aa; } .line-section { border-color:#d2a72c; } h3 { margin:0 0 8px; font-size:14px; }
 label { display:flex; flex-direction:column; gap:4px; margin:7px 0; } label.check { flex-direction:row; align-items:center; }
 input, select, textarea, button { box-sizing:border-box; width:100%; min-height:28px; color:inherit; background:var(--color-normal-fill-emphasis); border:1px solid var(--color-normal-border); border-radius:4px; }
 textarea { min-height:56px; resize:vertical; font-family:monospace; } button { cursor:pointer; padding:4px 8px; }
@@ -97,12 +108,15 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
         editId:'#edit-id', editType:'#edit-type', priority:'#priority', enabled:'#enabled', handlerId:'#handler-id', prompt:'#prompt',
         triggerMode:'#trigger-mode', payload:'#payload', targetSpawnRef:'#target-spawn-ref', overworldEntry:'#overworld-entry',
         apply:'#apply', addVertex:'#add-vertex', removeVertex:'#remove-vertex', delete:'#delete', validate:'#validate', saveApply:'#save-apply',
+        lineList:'#line-list', focusLine:'#focus-line', lineId:'#line-id', lineAsset:'#line-asset', lineEnabled:'#line-enabled',
+        createLine:'#create-line', applyLine:'#apply-line', deleteLine:'#delete-line',
         saveScene:'#save-scene', status:'#status',
     },
     methods: {
         setStatus(value) { this.$.status.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2); },
         sceneId() { return this.$.scene.value || 'exterior'; },
         selectedId() { return this.$.list.value || ''; },
+        selectedLineId() { return this.$.lineList.value || ''; },
         async populateScenes() {
             const previous = this.sceneId();
             const ids = await runScene('listSceneIds');
@@ -125,6 +139,37 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
             if (ids.includes(previous)) this.$.scene.value = previous;
         },
         async activateScene() { await runScene('setPreviewScene', this.sceneId()); },
+        async refreshLines(selectId = '') {
+            const lines = await runScene('listOcclusionLines', this.sceneId());
+            this.occlusionLines = lines || [];
+            this.$.lineList.innerHTML = '';
+            for (const line of this.occlusionLines) {
+                const option = document.createElement('option');
+                option.value = line.id;
+                option.textContent = `${line.id} · ${line.foregroundAsset || '未设置前景'}`;
+                this.$.lineList.appendChild(option);
+            }
+            if (selectId) this.$.lineList.value = selectId;
+            if (!this.$.lineList.value && this.occlusionLines.length) this.$.lineList.value = this.occlusionLines[0].id;
+            this.loadSelectedLine();
+        },
+        loadSelectedLine() {
+            const line = (this.occlusionLines || []).find((item) => item.id === this.selectedLineId());
+            if (!line) {
+                this.$.lineId.value = '';
+                this.$.lineAsset.value = '';
+                return;
+            }
+            this.$.lineId.value = line.id;
+            this.$.lineAsset.value = line.foregroundAsset || '';
+            this.$.lineEnabled.checked = line.enabled !== false;
+        },
+        async focusSelectedLine() {
+            const line = (this.occlusionLines || []).find((item) => item.id === this.selectedLineId());
+            if (!line?.nodeUuid) return this.setStatus('未找到当前遮挡线，请先刷新');
+            Editor.Selection.select('node', line.nodeUuid);
+            this.setStatus(`已选中 Scene-${this.sceneId()}/OcclusionLine-${line.id}\n展开后只拖动 Point-A、Point-B；完成后点击“保存并应用”。`);
+        },
         async populateSpawnTargets(selectedValue = '') {
             const targets = await runScene('listSpawnTargets', this.sceneId());
             this.$.targetSpawnRef.innerHTML = '<option value="">请选择目标出生点</option>';
@@ -148,6 +193,7 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
                 await this.activateScene();
                 await this.populateSpawnTargets();
                 const regions = await runScene('listRegions', this.sceneId());
+                await this.refreshLines();
                 this.regions = regions || [];
                 const filter = this.$.filter.value;
                 const visibleRegions = filter === 'all'
@@ -204,6 +250,7 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
     },
     ready() {
         this.regions=[];
+        this.occlusionLines=[];
         this.$.refresh.addEventListener('click',async()=>{
             try {
                 await Editor.Message.request('asset-db', 'refresh-asset', 'db://assets/resources/locations');
@@ -222,6 +269,21 @@ summary { cursor:pointer; } small { display:block; opacity:.75; margin-top:6px; 
         this.$.list.addEventListener('change',()=>this.loadSelected());
         this.$.list.addEventListener('dblclick',()=>this.focusSelected());
         this.$.focusRegion.addEventListener('click',()=>this.focusSelected());
+        this.$.lineList.addEventListener('change',()=>this.loadSelectedLine());
+        this.$.lineList.addEventListener('dblclick',()=>this.focusSelectedLine());
+        this.$.focusLine.addEventListener('click',()=>this.focusSelectedLine());
+        this.$.createLine.addEventListener('click',async()=>{try{
+            await this.activateScene();
+            const line=await runScene('createOcclusionLine',{sceneId:this.sceneId(),id:this.$.lineId.value||'occlusion-line',foregroundAsset:this.$.lineAsset.value,enabled:true});
+            await this.refreshLines(line.id); await this.saveApply(`已创建遮挡线 ${line.id}`);
+        }catch(error){this.setStatus(`创建遮挡线失败：${error.message||error}`);}});
+        this.$.applyLine.addEventListener('click',async()=>{const id=this.selectedLineId();if(!id)return this.setStatus('请先选择遮挡线');try{
+            const line=await runScene('setOcclusionLineProperties',{sceneId:this.sceneId(),id,newId:this.$.lineId.value,foregroundAsset:this.$.lineAsset.value,enabled:this.$.lineEnabled.checked});
+            await this.refreshLines(line.id); await this.saveApply(`已应用遮挡线 ${line.id}`);
+        }catch(error){this.setStatus(`应用遮挡线失败：${error.message||error}`);}});
+        this.$.deleteLine.addEventListener('click',async()=>{const id=this.selectedLineId();if(!id)return;try{
+            await runScene('deleteOcclusionLine',id,this.sceneId()); await this.refreshLines(); await this.saveApply(`已删除遮挡线 ${id}`);
+        }catch(error){this.setStatus(`删除遮挡线失败：${error.message||error}`);}});
         this.$.create.addEventListener('click',async()=>{ try {
             await this.activateScene();
             const region=await runScene('createRegularRegion',{sceneId:this.sceneId(),id:this.$.newId.value,type:Number(this.$.newType.value),sides:Number(this.$.newSides.value),radius:Number(this.$.newRadius.value)});

@@ -5,6 +5,14 @@ export type LocationPolygon = {
     points: Vec2[];
 };
 
+/** A two-point depth line. Above the line, the foreground draws over the player. */
+export type LocationOcclusionLine = {
+    id: string;
+    start: Vec2;
+    end: Vec2;
+    foregroundAsset: string;
+};
+
 export type LocationTransition = {
     id: string;
     title: string;
@@ -29,6 +37,7 @@ export type PerspectiveSceneConfig = {
     spawns: LocationSpawn[];
     walkAreas: Vec2[][];
     obstacles: LocationPolygon[];
+    occlusionLines?: LocationOcclusionLine[];
     transitions: LocationTransition[];
     farY: number;
     nearY: number;

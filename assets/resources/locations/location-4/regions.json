@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "locationId": "location-4",
   "referenceSize": {
     "width": 2208,
@@ -226,6 +226,17 @@
             { "x": 0.92, "y": 0.47 },
             { "x": 0.94, "y": 0.59 },
             { "x": 0.41, "y": 0.61 }
+          ]
+        }
+      ],
+      "occlusionLines": [
+        {
+          "id": "flowerbed",
+          "enabled": true,
+          "foregroundAsset": "main-flowerbed-foreground",
+          "points": [
+            { "x": -0.05, "y": 0.841797 },
+            { "x": 1.05, "y": 0.841797 }
           ]
         }
       ],
