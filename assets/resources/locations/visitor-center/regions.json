@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "locationId": "visitor-center",
   "referenceSize": {
     "width": 1365,
@@ -1339,6 +1339,26 @@
               "x": 0.342667,
               "y": 0.448113
             }
+          ]
+        }
+      ],
+      "occlusionLines": [
+        {
+          "id": "chair-1",
+          "enabled": true,
+          "foregroundAsset": "leisure-plaza-chairs-foreground",
+          "points": [
+            { "x": 0.771699, "y": 0.666613 },
+            { "x": 1.042818, "y": 0.666613 }
+          ]
+        },
+        {
+          "id": "chair-2",
+          "enabled": true,
+          "foregroundAsset": "leisure-plaza-chairs-foreground",
+          "points": [
+            { "x": 0.552191, "y": 0.559633 },
+            { "x": 0.71977, "y": 0.559633 }
           ]
         }
       ],

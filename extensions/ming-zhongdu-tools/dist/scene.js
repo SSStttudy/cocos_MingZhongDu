@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const REGION_TYPES = ['Walkable', 'Obstacle', 'Interaction', 'Transition', 'Occlusion', 'Spawn'];
+const REGION_TYPES = ['Walkable', 'Obstacle', 'Interaction', 'Transition', 'Reserved', 'Spawn'];
 const REFERENCE_WIDTH = 1365;
 const REFERENCE_HEIGHT = 1024;
 const PERSPECTIVE_NEAR_NAME = 'PerspectiveNear';
@@ -83,7 +83,7 @@ function listSceneIdsFromAssets() {
         fs.readdirSync(directory, { withFileTypes: true })
             .filter((entry) => entry.isFile() && SCENE_FILE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
             .map((entry) => path.basename(entry.name, path.extname(entry.name))),
-    )];
+    )].filter((id) => !id.endsWith('-foreground'));
     const order = new Map(SCENE_ORDER.map((id, index) => [id, index]));
     return ids.sort((left, right) => (
         (order.get(left) ?? Number.MAX_SAFE_INTEGER) - (order.get(right) ?? Number.MAX_SAFE_INTEGER)
@@ -103,6 +103,13 @@ function getRegionShapeClass() {
     const { js } = getEngine();
     const klass = js.getClassByName('RegionShape');
     if (!klass) throw new Error('RegionShape 尚未编译，请等待 Creator 完成脚本刷新');
+    return klass;
+}
+
+function getOcclusionLineShapeClass() {
+    const { js } = getEngine();
+    const klass = js.getClassByName('OcclusionLineShape');
+    if (!klass) throw new Error('OcclusionLineShape 尚未编译，请等待 Creator 完成脚本刷新');
     return klass;
 }
 
@@ -153,7 +160,12 @@ function ensureSceneGroup(sceneId) {
 }
 
 function hydrateSceneGroup(group, sceneId) {
-    if (normalizeRegionNodes(group).length > 0) return;
+    // Merge regions that were added to regions.json after the scene group was
+    // first authored. Existing editor nodes always win, so hand-tuned vertices
+    // are never reset when the panel is opened again.
+    const existingIds = new Set(
+        normalizeRegionNodes(group).map((node) => getRegionComponent(node)?.regionId),
+    );
     const locationId = tryGetLocationBootstrap()?.locationId || 'visitor-center';
     const sourcePath = path.join(
         Editor.Project.path,
@@ -175,12 +187,15 @@ function hydrateSceneGroup(group, sceneId) {
     const { Node, UITransform, Graphics, Layers } = getEngine();
     const size = getReferenceSize(sceneId);
     for (const item of sourceScene.regions || []) {
-        const regionNode = new Node(`Region-${sanitizeId(item.id)}`);
+        if (Number(item.type) === 4) continue;
+        const itemId = sanitizeId(item.id);
+        if (existingIds.has(itemId)) continue;
+        const regionNode = new Node(`Region-${itemId}`);
         regionNode.layer = Layers.Enum.UI_2D;
         regionNode.addComponent(UITransform).setContentSize(size.width, size.height);
         regionNode.addComponent(Graphics);
         const shape = regionNode.addComponent(getRegionShapeClass());
-        shape.regionId = sanitizeId(item.id);
+        shape.regionId = itemId;
         shape.regionType = Number(item.type) || 0;
         shape.enabledRegion = item.enabled !== false;
         shape.priority = Number(item.priority) || 0;
@@ -202,6 +217,37 @@ function hydrateSceneGroup(group, sceneId) {
             );
         }
         shape.redraw();
+        existingIds.add(itemId);
+    }
+    const existingLineIds = new Set(
+        normalizeOcclusionLineNodes(group).map((node) => getOcclusionLineComponent(node)?.lineId),
+    );
+    for (const item of sourceScene.occlusionLines || []) {
+        const lineId = sanitizeId(item.id);
+        if (existingLineIds.has(lineId) || !Array.isArray(item.points) || item.points.length < 2) continue;
+        const start = item.points[0];
+        const end = item.points[1];
+        createOcclusionLineInGroup(group, {
+            id: lineId,
+            foregroundAsset: String(item.foregroundAsset || ''),
+            enabled: item.enabled !== false,
+            start: {
+                x: (Number(start.x) - 0.5) * size.width,
+                y: (0.5 - Number(start.y)) * size.height,
+            },
+            end: {
+                x: (Number(end.x) - 0.5) * size.width,
+                y: (0.5 - Number(end.y)) * size.height,
+            },
+        });
+        existingLineIds.add(lineId);
+    }
+    // Occlusion is now authored exclusively as a two-point line. Remove legacy
+    // RegionShape type-4 nodes so they cannot leave a second, immovable yellow edge.
+    for (const node of [...normalizeRegionNodes(group)]) {
+        if (Number(getRegionComponent(node)?.regionType) !== 4) continue;
+        node.removeFromParent();
+        node.destroy();
     }
     if (sourceScene.perspective) {
         const calibration = ensurePerspectiveCalibration(sceneId);
@@ -338,6 +384,10 @@ function getRegionComponent(node) {
     return node.getComponent(getRegionShapeClass());
 }
 
+function getOcclusionLineComponent(node) {
+    return node.getComponent(getOcclusionLineShapeClass());
+}
+
 function sanitizeId(value) {
     const id = String(value || 'region').trim().toLowerCase()
         .replace(/[^a-z0-9\-_]+/g, '-')
@@ -367,6 +417,32 @@ function normalizeRegionNodes(group) {
     return nodes;
 }
 
+function normalizeOcclusionLineNodes(group) {
+    const nodes = group.children.filter((child) => Boolean(getOcclusionLineComponent(child)));
+    const used = new Set();
+    for (const node of nodes) {
+        const shape = getOcclusionLineComponent(node);
+        const nodeId = node.name.startsWith('OcclusionLine-')
+            ? node.name.slice('OcclusionLine-'.length)
+            : node.name;
+        const base = sanitizeId(nodeId || shape.lineId);
+        let id = base;
+        let suffix = 2;
+        while (used.has(id)) {
+            id = `${base}-${suffix}`;
+            suffix += 1;
+        }
+        used.add(id);
+        shape.lineId = id;
+        node.name = `OcclusionLine-${id}`;
+    }
+    return nodes;
+}
+
+function getOcclusionLineNodes(sceneId) {
+    return normalizeOcclusionLineNodes(ensureSceneGroup(sceneId));
+}
+
 function uniqueRegionId(requested, sceneId) {
     const base = sanitizeId(requested);
     const used = new Set(getRegionNodes(sceneId).map((node) => getRegionComponent(node)?.regionId));
@@ -391,6 +467,109 @@ function createVertex(parent, index, x, y) {
     vertex.setPosition(x, y, 0);
     parent.addChild(vertex);
     return vertex;
+}
+
+function createLinePoint(parent, name, x, y) {
+    const { Node, UITransform, Graphics, Layers, Color } = getEngine();
+    const point = new Node(name);
+    point.layer = Layers.Enum.UI_2D;
+    point.addComponent(UITransform).setContentSize(28, 28);
+    const graphics = point.addComponent(Graphics);
+    graphics.fillColor = new Color(255, 250, 225, 255);
+    graphics.strokeColor = new Color(255, 207, 48, 255);
+    graphics.lineWidth = 4;
+    graphics.circle(0, 0, 9);
+    graphics.fill();
+    graphics.stroke();
+    point.setPosition(x, y, 0);
+    parent.addChild(point);
+    return point;
+}
+
+function createOcclusionLineInGroup(parent, options = {}) {
+    const { Node, UITransform, Graphics, Layers } = getEngine();
+    const sceneId = parent.name.startsWith('Scene-')
+        ? parent.name.slice('Scene-'.length)
+        : getCurrentSceneId();
+    const size = getReferenceSize(sceneId);
+    const id = sanitizeId(options.id || 'occlusion-line');
+    const line = new Node(`OcclusionLine-${id}`);
+    line.layer = Layers.Enum.UI_2D;
+    line.addComponent(UITransform).setContentSize(size.width, size.height);
+    line.addComponent(Graphics);
+    const shape = line.addComponent(getOcclusionLineShapeClass());
+    shape.lineId = id;
+    shape.enabledLine = options.enabled !== false;
+    shape.foregroundAsset = String(options.foregroundAsset || '');
+    parent.addChild(line);
+    const start = options.start || { x: -300, y: -150 };
+    const end = options.end || { x: 300, y: -150 };
+    createLinePoint(line, 'Point-A', start.x, start.y);
+    createLinePoint(line, 'Point-B', end.x, end.y);
+    shape.redraw();
+    return line;
+}
+
+function serializeOcclusionLine(node) {
+    const shape = getOcclusionLineComponent(node);
+    const position = node.position;
+    const scale = node.scale;
+    const points = shape.getPoints().map((point) => ({
+        x: position.x + point.x * scale.x,
+        y: position.y + point.y * scale.y,
+    }));
+    return {
+        id: shape.lineId,
+        enabled: Boolean(shape.enabledLine),
+        foregroundAsset: shape.foregroundAsset || '',
+        points,
+    };
+}
+
+function toExportOcclusionLine(node, sceneId) {
+    const line = serializeOcclusionLine(node);
+    const size = getReferenceSize(sceneId);
+    return {
+        ...line,
+        points: line.points.map((point) => ({
+            x: Number((point.x / size.width + 0.5).toFixed(6)),
+            y: Number((0.5 - point.y / size.height).toFixed(6)),
+        })),
+    };
+}
+
+function findOcclusionLine(id, sceneId) {
+    return getOcclusionLineNodes(sceneId)
+        .find((node) => getOcclusionLineComponent(node)?.lineId === id) || null;
+}
+
+function createOcclusionLine(options = {}) {
+    const sceneId = getCurrentSceneId(options.sceneId);
+    const used = new Set(getOcclusionLineNodes(sceneId).map((node) => getOcclusionLineComponent(node)?.lineId));
+    let id = sanitizeId(options.id || 'occlusion-line');
+    const base = id;
+    let suffix = 2;
+    while (used.has(id)) id = `${base}-${suffix++}`;
+    return serializeOcclusionLine(createOcclusionLineInGroup(ensureSceneGroup(sceneId), { ...options, id }));
+}
+
+function setOcclusionLineProperties(values = {}) {
+    const sceneId = getCurrentSceneId(values.sceneId);
+    const node = findOcclusionLine(values.id, sceneId);
+    if (!node) throw new Error(`未找到遮挡线：${values.id}`);
+    const shape = getOcclusionLineComponent(node);
+    if (values.newId !== undefined) {
+        const nextId = sanitizeId(values.newId);
+        const duplicate = getOcclusionLineNodes(sceneId)
+            .some((candidate) => candidate !== node && getOcclusionLineComponent(candidate)?.lineId === nextId);
+        if (duplicate) throw new Error(`遮挡线 ID 已存在：${nextId}`);
+        shape.lineId = nextId;
+        node.name = `OcclusionLine-${nextId}`;
+    }
+    if (values.enabled !== undefined) shape.enabledLine = Boolean(values.enabled);
+    if (values.foregroundAsset !== undefined) shape.foregroundAsset = String(values.foregroundAsset);
+    shape.redraw();
+    return serializeOcclusionLine(node);
 }
 
 function createRegionInGroup(parent, id, type, sides, radius, center = { x: 0, y: 0 }) {
@@ -693,7 +872,7 @@ function exportRegions() {
     if (fs.existsSync(outputPath)) {
         try { document = JSON.parse(fs.readFileSync(outputPath, 'utf8')); } catch (_) { /* replace invalid JSON */ }
     }
-    document.version = 1;
+    document.version = 2;
     document.locationId = locationId;
     const currentSize = getReferenceSize();
     document.referenceSize = { width: currentSize.width, height: currentSize.height };
@@ -701,13 +880,17 @@ function exportRegions() {
     const counts = {};
     for (const group of root.children.filter((child) => child.name.startsWith('Scene-'))) {
         const sceneId = group.name.slice('Scene-'.length);
-        const regions = normalizeRegionNodes(group).map((node) => toExportRegion(node, sceneId));
+        const regions = normalizeRegionNodes(group)
+            .filter((node) => Number(getRegionComponent(node)?.regionType) !== 4)
+            .map((node) => toExportRegion(node, sceneId));
+        const occlusionLines = normalizeOcclusionLineNodes(group)
+            .map((node) => toExportOcclusionLine(node, sceneId));
         const perspective = readPerspectiveCalibration(group);
         const worldSize = getReferenceSize(sceneId);
         document.scenes[sceneId] = perspective
-            ? { regions, perspective, worldSize }
-            : { regions, worldSize };
-        counts[sceneId] = regions.length;
+            ? { regions, occlusionLines, perspective, worldSize }
+            : { regions, occlusionLines, worldSize };
+        counts[sceneId] = { regions: regions.length, occlusionLines: occlusionLines.length };
     }
     fs.writeFileSync(outputPath, `${JSON.stringify(document, null, 2)}\n`, 'utf8');
     return { outputPath, counts };
@@ -756,6 +939,21 @@ exports.methods = {
             ...serializeRegion(node),
             nodeUuid: node.uuid,
         }));
+    },
+    listOcclusionLines(sceneId) {
+        return getOcclusionLineNodes(sceneId).map((node) => ({
+            ...serializeOcclusionLine(node),
+            nodeUuid: node.uuid,
+        }));
+    },
+    createOcclusionLine,
+    setOcclusionLineProperties,
+    deleteOcclusionLine(id, sceneId) {
+        const node = findOcclusionLine(id, sceneId);
+        if (!node) return false;
+        node.removeFromParent();
+        node.destroy();
+        return true;
     },
     setRegionProperties,
     addVertex,

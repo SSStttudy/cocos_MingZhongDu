@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "locationId": "location-2",
   "referenceSize": {
     "width": 1365,
@@ -930,6 +930,17 @@
               "x": 0.248738,
               "y": 1.000369
             }
+          ]
+        }
+      ],
+      "occlusionLines": [
+        {
+          "id": "front-plants",
+          "enabled": true,
+          "foregroundAsset": "5-plants-steps-foreground",
+          "points": [
+            { "x": -0.05, "y": 0.802734 },
+            { "x": 1.05, "y": 0.802734 }
           ]
         }
       ],

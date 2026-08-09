@@ -8,6 +8,7 @@ import {
     Graphics,
     input,
     Input,
+    instantiate,
     JsonAsset,
     KeyCode,
     Label,
@@ -41,6 +42,7 @@ import {
     LocationTourTarget,
 } from '../tour/LocationTourGuide';
 import { TourProgressStore } from '../tour/TourProgressStore';
+import { OcclusionLineShape } from './editor/OcclusionLineShape';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -130,6 +132,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private world!: Node;
     private playerShadow!: Node;
     private player!: Node;
+    private readonly foregroundLayers = new Map<string, Node>();
     private playerAnimator!: DirectionalWalkAnimator;
     private joystick!: Node;
     private joystickKnob!: Node;
@@ -176,6 +179,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     onLoad(): void {
         this.config = getLocationConfig(this.locationId);
         this.applyExportedRegionData();
+        this.applyAuthoredOcclusionLines();
         const locationEntry = EDITOR
             ? null
             : LocationTransitionState.consumeLocationEntry(this.locationId);
@@ -253,6 +257,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         }
 
         this.createBackground(calibration, 'BackgroundCurrent', this.getCurrentSpriteFrame());
+        this.createForegroundLayers(calibration);
         this.createRegionLayer(calibration, true);
         this.createEditorPlayerMarker(calibration);
     }
@@ -309,6 +314,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         foreground.layer = Layers.Enum.UI_2D;
         foreground.addComponent(UITransform).setContentSize(this.sceneConfig.worldSize);
         this.world.addChild(foreground);
+        this.createForegroundLayers(foreground);
 
         this.updatePlayerVisual();
         this.updateHud();
@@ -359,6 +365,31 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         });
     }
 
+    /**
+     * Builds visual layers from editor-authored two-point occlusion lines.
+     */
+    private createForegroundLayers(parent: Node): void {
+        if (!EDITOR) this.foregroundLayers.clear();
+        const library = this.node.getChildByName('ForegroundLibrary');
+        const assetNames = [...new Set(
+            (this.sceneConfig.occlusionLines ?? [])
+                .map((line) => line.foregroundAsset)
+                .filter(Boolean),
+        )];
+        for (const assetName of assetNames) {
+            const authoredForeground = library?.getChildByName(assetName);
+            if (!authoredForeground) {
+                console.warn(`[LocationBootstrap] 场景中缺少静态前景节点：ForegroundLibrary/${assetName}`);
+                continue;
+            }
+            const layer = instantiate(authoredForeground);
+            layer.name = `Foreground-${assetName}`;
+            parent.addChild(layer);
+            if (!EDITOR) this.foregroundLayers.set(assetName, layer);
+            layer.active = EDITOR;
+        }
+    }
+
     private createRegionLayer(parent: Node, editor: boolean): void {
         const layer = new Node(editor ? 'PerspectiveRegions' : 'DebugRegions');
         layer.layer = Layers.Enum.UI_2D;
@@ -378,6 +409,16 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         for (const obstacle of this.sceneConfig.obstacles) {
             this.drawPolygon(graphics, obstacle.points, true);
             if (editor) this.createRegionLabel(layer, obstacle.id, this.polygonCenter(obstacle.points), new Color(122, 38, 32, 255));
+        }
+
+        if (!editor) {
+            graphics.strokeColor = new Color(255, 207, 48, 255);
+            graphics.lineWidth = 6;
+            for (const line of this.sceneConfig.occlusionLines ?? []) {
+                graphics.moveTo(line.start.x, line.start.y);
+                graphics.lineTo(line.end.x, line.end.y);
+                graphics.stroke();
+            }
         }
 
         graphics.fillColor = new Color(60, 147, 218, editor ? 100 : 55);
@@ -688,6 +729,60 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         return inside;
     }
 
+    /** The two endpoints define both the active width and the depth threshold. */
+    private isBehindOcclusionLine(point: Vec2, start: Vec2, end: Vec2): boolean {
+        const minX = Math.min(start.x, end.x);
+        const maxX = Math.max(start.x, end.x);
+        if (point.x < minX || point.x > maxX) return false;
+        const width = end.x - start.x;
+        if (Math.abs(width) < 0.001) return false;
+        const ratio = (point.x - start.x) / width;
+        const lineY = start.y + (end.y - start.y) * ratio;
+        return point.y >= lineY;
+    }
+
+    /**
+     * Scene-authored Point-A / Point-B nodes are the source of truth for
+     * occlusion. regions.json remains a portable export, but moving a yellow
+     * line in Cocos and saving the scene must be enough to update gameplay.
+     */
+    private applyAuthoredOcclusionLines(): void {
+        const editorRoot = this.node.getChildByName('RegionEditor');
+        if (!editorRoot) return;
+
+        for (const group of editorRoot.children) {
+            if (!group.name.startsWith('Scene-')) continue;
+            const sceneId = group.name.slice('Scene-'.length);
+            const sceneConfig = this.config.scenes[sceneId];
+            if (!sceneConfig) continue;
+
+            const authoredNodes = group.children.filter((child) => (
+                child.getComponent(OcclusionLineShape) !== null
+            ));
+            if (authoredNodes.length === 0) continue;
+
+            sceneConfig.occlusionLines = authoredNodes
+                .map((lineNode) => {
+                    const shape = lineNode.getComponent(OcclusionLineShape)!;
+                    const points = shape.getPoints();
+                    if (!shape.enabledLine || points.length < 2) return null;
+                    const toScenePoint = (point: Vec2) => new Vec2(
+                        lineNode.position.x + point.x * lineNode.scale.x,
+                        lineNode.position.y + point.y * lineNode.scale.y,
+                    );
+                    return {
+                        id: shape.lineId,
+                        start: toScenePoint(points[0]),
+                        end: toScenePoint(points[1]),
+                        foregroundAsset: shape.foregroundAsset.trim(),
+                    };
+                })
+                .filter((line): line is NonNullable<typeof line> => (
+                    line !== null && line.foregroundAsset.length > 0
+                ));
+        }
+    }
+
     private applyExportedRegionData(): void {
         const document = this.regionData?.json as any;
         if (!document?.scenes) return;
@@ -760,6 +855,16 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             sceneConfig.obstacles = regions
                 .filter((region: any) => Number(region.type) === 1)
                 .map((region: any) => ({ id: region.id, points: region.points.map(toWorld) }));
+            const exportedLines = document.scenes[sceneId]?.occlusionLines ?? [];
+            sceneConfig.occlusionLines = exportedLines
+                .filter((line: any) => line.enabled !== false && line.points?.length >= 2)
+                .map((line: any) => ({
+                    id: String(line.id),
+                    start: toWorld(line.points[0]),
+                    end: toWorld(line.points[1]),
+                    foregroundAsset: String(line.foregroundAsset || '').trim(),
+                }))
+                .filter((line) => line.foregroundAsset.length > 0);
 
             const existingTransitions = new Map(sceneConfig.transitions.map((transition) => [transition.id, transition]));
             const exportedTransitions = regions
@@ -885,6 +990,17 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.playerShadow.setScale(scale, scale, 1);
         this.player.setPosition(this.playerPosition.x, this.playerPosition.y, 0);
         this.player.setScale(scale, scale, 1);
+        this.updateForegroundOcclusion();
+    }
+
+    private updateForegroundOcclusion(): void {
+        const lines = this.sceneConfig.occlusionLines ?? [];
+        for (const [assetName, layer] of this.foregroundLayers) {
+            layer.active = lines.some((line) => (
+                line.foregroundAsset === assetName
+                && this.isBehindOcclusionLine(this.playerPosition, line.start, line.end)
+            ));
+        }
     }
 
     getTourWorld(): Node {

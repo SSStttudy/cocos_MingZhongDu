@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "locationId": "location-3",
   "referenceSize": {
     "width": 1365,
@@ -551,6 +551,17 @@
           ]
         }
       ],
+      "occlusionLines": [
+        {
+          "id": "gate-right",
+          "enabled": true,
+          "foregroundAsset": "3-gate-foreground",
+          "points": [
+            { "x": -0.05, "y": 0.714844 },
+            { "x": 1.05, "y": 0.714844 }
+          ]
+        }
+      ],
       "perspective": {
         "nearY": -398.744,
         "nearVisualHeight": 400,
@@ -729,6 +740,17 @@
               "x": 0.205499,
               "y": 0.77901
             }
+          ]
+        }
+      ],
+      "occlusionLines": [
+        {
+          "id": "gate-left",
+          "enabled": true,
+          "foregroundAsset": "4-gate-foreground",
+          "points": [
+            { "x": -0.05, "y": 0.78 },
+            { "x": 1.05, "y": 0.78 }
           ]
         }
       ],
@@ -947,8 +969,8 @@
               "y": 0.740658
             },
             {
-              "x": 0.298355,
-              "y": 0.748937
+              "x": 0.283997,
+              "y": 0.744952
             }
           ]
         },
@@ -967,21 +989,41 @@
           "overworldEntryId": "",
           "points": [
             {
-              "x": 0.65831,
-              "y": 0.757476
+              "x": 0.677582,
+              "y": 0.78019
             },
             {
-              "x": 0.697675,
-              "y": 0.74799
+              "x": 0.712027,
+              "y": 0.773256
             },
             {
-              "x": 0.620604,
-              "y": 0.703278
+              "x": 0.622107,
+              "y": 0.704129
             },
             {
-              "x": 0.585716,
-              "y": 0.709078
+              "x": 0.59696,
+              "y": 0.728121
             }
+          ]
+        }
+      ],
+      "occlusionLines": [
+        {
+          "id": "gate-left",
+          "enabled": true,
+          "foregroundAsset": "5-gate-left-foreground",
+          "points": [
+            { "x": -0.05, "y": 0.80 },
+            { "x": 0.425781, "y": 0.80 }
+          ]
+        },
+        {
+          "id": "gate-right",
+          "enabled": true,
+          "foregroundAsset": "5-gate-right-foreground",
+          "points": [
+            { "x": 0.425781, "y": 0.80 },
+            { "x": 1.05, "y": 0.80 }
           ]
         }
       ],
