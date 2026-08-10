@@ -9,31 +9,30 @@ import {
     UITransform,
     Vec2,
 } from 'cc';
-import { LocationSceneConfig, LocationTransition } from '../location/LocationConfig';
+import { LocationSceneConfig } from '../location/LocationConfig';
 import { TourStep } from '../tour/TourConfig';
+import {
+    LOCATION_MINIMAP_LAYOUTS,
+    MinimapNodeLayout,
+} from './LocationMinimapLayout';
 
 const { ccclass } = _decorator;
 
 type SceneEdge = { a: string; b: string; key: string };
-type DirectedEdge = {
-    from: string;
-    to: string;
+type DirectedEdge = { from: string; to: string; key: string };
+type ExitMark = {
+    sceneId: string;
+    entryId: string;
     key: string;
-    direction: Vec2;
-    targetDirection: Vec2;
+    position: Vec2;
 };
-type ExitMark = { sceneId: string; entryId: string; key: string; direction: Vec2 };
 type HighlightState = {
     targetSceneId: string;
     recommendedEdgeKey: string;
     targetExitId: string;
 };
 
-const NODE_WIDTH = 46;
-const NODE_HEIGHT = 24;
-const COLUMN_GAP = 66;
-const ROW_GAP = 42;
-const COMPONENT_GAP = 52;
+const DEFAULT_NODE_SIZE = 30;
 
 @ccclass('LocationMinimap')
 export class LocationMinimap extends Component {
@@ -46,7 +45,7 @@ export class LocationMinimap extends Component {
     private sceneEdges: SceneEdge[] = [];
     private directedEdges: DirectedEdge[] = [];
     private exits: ExitMark[] = [];
-    private positions = new Map<string, Vec2>();
+    private nodeLayouts = new Map<string, MinimapNodeLayout>();
     private panelWidth = 0;
     private panelHeight = 0;
     private elapsed = 0;
@@ -62,7 +61,7 @@ export class LocationMinimap extends Component {
         this.currentSceneId = currentSceneId;
         this.getTourStep = getTourStep;
         this.buildGraph();
-        if (this.positions.size === 0) {
+        if (this.nodeLayouts.size === 0) {
             console.warn(`[LocationMinimap] ${config.id} 没有可显示的分镜，已隐藏小地图。`);
             return;
         }
@@ -80,8 +79,8 @@ export class LocationMinimap extends Component {
 
     layout(visibleSize: Size): void {
         if (!this.root) return;
-        const width = Math.max(250, Math.min(350, visibleSize.width * 0.3));
-        const height = Math.max(120, Math.min(185, visibleSize.height * 0.27));
+        const width = Math.max(240, Math.min(350, visibleSize.width * 0.3));
+        const height = Math.max(140, Math.min(230, visibleSize.height * 0.33));
         const sizeChanged = Math.abs(width - this.panelWidth) > 0.5
             || Math.abs(height - this.panelHeight) > 0.5;
         this.panelWidth = width;
@@ -120,11 +119,22 @@ export class LocationMinimap extends Component {
     private buildGraph(): void {
         if (!this.config) return;
         const sceneIds = Object.keys(this.config.scenes).sort(this.compareSceneIds);
+        const layout = LOCATION_MINIMAP_LAYOUTS[this.config.id];
+        sceneIds.forEach((sceneId, index) => {
+            const node = layout?.nodes[sceneId];
+            this.nodeLayouts.set(sceneId, node ?? {
+                x: index * 48,
+                y: 0,
+                width: DEFAULT_NODE_SIZE,
+                height: DEFAULT_NODE_SIZE,
+                radius: DEFAULT_NODE_SIZE * 0.5,
+            });
+        });
+
         const edgeKeys = new Set<string>();
         for (const sceneId of sceneIds) {
             const scene = this.config.scenes[sceneId];
             for (const transition of scene.transitions) {
-                const direction = this.getTransitionDirection(sceneId, transition);
                 if (transition.targetSceneId) {
                     if (!this.config.scenes[transition.targetSceneId]) {
                         const warningKey = `${sceneId}/${transition.id}/${transition.targetSceneId}`;
@@ -135,147 +145,29 @@ export class LocationMinimap extends Component {
                         continue;
                     }
                     const key = this.edgeKey(sceneId, transition.targetSceneId);
-                    this.directedEdges.push({
-                        from: sceneId,
-                        to: transition.targetSceneId,
-                        key,
-                        direction,
-                        targetDirection: this.getSpawnDirection(
-                            transition.targetSceneId,
-                            transition.targetSpawnId,
-                            direction.clone().multiplyScalar(-1),
-                        ),
-                    });
+                    this.directedEdges.push({ from: sceneId, to: transition.targetSceneId, key });
                     if (!edgeKeys.has(key)) {
                         edgeKeys.add(key);
                         this.sceneEdges.push({ a: sceneId, b: transition.targetSceneId, key });
                     }
                 }
                 if (transition.overworldEntryId) {
+                    const configured = layout?.exits.find((item) => (
+                        item.sceneId === sceneId
+                        && item.entryId === transition.overworldEntryId
+                    ));
+                    const node = this.nodeLayouts.get(sceneId)!;
                     this.exits.push({
                         sceneId,
                         entryId: transition.overworldEntryId,
                         key: `${sceneId}/${transition.id}`,
-                        direction,
+                        position: configured
+                            ? new Vec2(configured.x, configured.y)
+                            : new Vec2(node.x, node.y - 55),
                     });
                 }
             }
         }
-        this.positions = this.layoutGraph(sceneIds);
-    }
-
-    /** Place connected scenes on the same side as their transition in the source photograph. */
-    private layoutGraph(sceneIds: string[]): Map<string, Vec2> {
-        const positions = new Map<string, Vec2>();
-        const unvisited = new Set(sceneIds);
-        const roots = [this.config?.initialSceneId ?? '', ...sceneIds]
-            .filter((id, index, all) => id && all.indexOf(id) === index);
-        let nextComponentY = 0;
-
-        for (const root of roots) {
-            if (!unvisited.has(root)) continue;
-            const componentIds: string[] = [root];
-            positions.set(root, new Vec2(0, nextComponentY));
-            unvisited.delete(root);
-            const queue = [root];
-            while (queue.length > 0) {
-                const sceneId = queue.shift()!;
-                const origin = positions.get(sceneId)!;
-                for (const neighbor of this.getNeighbors(sceneId)) {
-                    if (!unvisited.has(neighbor)) continue;
-                    const direction = this.getRelationDirection(sceneId, neighbor);
-                    const desired = new Vec2(
-                        origin.x + direction.x * COLUMN_GAP,
-                        origin.y + direction.y * ROW_GAP,
-                    );
-                    const position = this.findFreePosition(desired, direction, positions);
-                    positions.set(neighbor, position);
-                    componentIds.push(neighbor);
-                    unvisited.delete(neighbor);
-                    queue.push(neighbor);
-                }
-            }
-            const componentBottom = Math.min(...componentIds.map((id) => positions.get(id)!.y));
-            nextComponentY = componentBottom - COMPONENT_GAP;
-        }
-
-        if (positions.size > 0) {
-            const bounds = this.getPositionBounds(positions);
-            const centerX = (bounds.minX + bounds.maxX) * 0.5;
-            const centerY = (bounds.minY + bounds.maxY) * 0.5;
-            for (const point of positions.values()) {
-                point.x -= centerX;
-                point.y -= centerY;
-            }
-        }
-        return positions;
-    }
-
-    private getNeighbors(sceneId: string): string[] {
-        const neighbors = new Set<string>();
-        for (const edge of this.directedEdges) {
-            if (edge.from === sceneId) neighbors.add(edge.to);
-            if (edge.to === sceneId) neighbors.add(edge.from);
-        }
-        return [...neighbors].sort(this.compareSceneIds);
-    }
-
-    private getRelationDirection(from: string, to: string): Vec2 {
-        const direct = this.directedEdges.find((edge) => edge.from === from && edge.to === to);
-        if (direct) return direct.direction.clone();
-        const reverse = this.directedEdges.find((edge) => edge.from === to && edge.to === from);
-        if (reverse) return reverse.direction.clone().multiplyScalar(-1);
-        return new Vec2(1, 0);
-    }
-
-    private findFreePosition(
-        desired: Vec2,
-        direction: Vec2,
-        positions: Map<string, Vec2>,
-    ): Vec2 {
-        const offsets = [0, 1, -1, 2, -2, 3, -3];
-        for (const offset of offsets) {
-            const candidate = desired.clone();
-            if (Math.abs(direction.x) >= Math.abs(direction.y)) candidate.y += offset * ROW_GAP;
-            else candidate.x += offset * COLUMN_GAP;
-            if (this.isPositionFree(candidate, positions)) return candidate;
-        }
-        return new Vec2(desired.x, desired.y - ROW_GAP * 4);
-    }
-
-    private isPositionFree(candidate: Vec2, positions: Map<string, Vec2>): boolean {
-        for (const point of positions.values()) {
-            if (
-                Math.abs(candidate.x - point.x) < NODE_WIDTH + 10
-                && Math.abs(candidate.y - point.y) < NODE_HEIGHT + 10
-            ) return false;
-        }
-        return true;
-    }
-
-    private getTransitionDirection(sceneId: string, transition: LocationTransition): Vec2 {
-        const scene = this.config?.scenes[sceneId];
-        if (!scene || transition.polygon.length === 0) return new Vec2(1, 0);
-        const center = new Vec2();
-        for (const point of transition.polygon) center.add(point);
-        center.multiplyScalar(1 / transition.polygon.length);
-        const normalizedX = center.x / Math.max(1, scene.worldSize.width * 0.5);
-        const normalizedY = center.y / Math.max(1, scene.worldSize.height * 0.5);
-        // Horizontal placement is the primary cue in the panoramic photographs.
-        if (Math.abs(normalizedX) >= 0.12) return new Vec2(Math.sign(normalizedX), 0);
-        if (Math.abs(normalizedY) >= 0.12) return new Vec2(0, Math.sign(normalizedY));
-        return new Vec2(1, 0);
-    }
-
-    private getSpawnDirection(sceneId: string, spawnId: string | undefined, fallback: Vec2): Vec2 {
-        const scene = this.config?.scenes[sceneId];
-        const spawn = scene?.spawns.find((item) => item.id === spawnId);
-        if (!scene || !spawn) return fallback;
-        const normalizedX = spawn.position.x / Math.max(1, scene.worldSize.width * 0.5);
-        const normalizedY = spawn.position.y / Math.max(1, scene.worldSize.height * 0.5);
-        if (Math.abs(normalizedX) >= 0.12) return new Vec2(Math.sign(normalizedX), 0);
-        if (Math.abs(normalizedY) >= 0.12) return new Vec2(0, Math.sign(normalizedY));
-        return fallback;
     }
 
     private createUi(): void {
@@ -301,11 +193,10 @@ export class LocationMinimap extends Component {
     }
 
     private drawGraph(): void {
-        if (!this.content || !this.graphGraphics || this.positions.size === 0) return;
+        if (!this.content || !this.graphGraphics || this.nodeLayouts.size === 0) return;
         const graph = this.graphGraphics;
         const highlight = this.getHighlightState();
-        const exitPositions = this.getExitPositions();
-        const bounds = this.getGraphBounds(exitPositions);
+        const bounds = this.getGraphBounds();
         const graphWidth = Math.max(1, bounds.maxX - bounds.minX);
         const graphHeight = Math.max(1, bounds.maxY - bounds.minY);
         const scale = Math.min(
@@ -313,55 +204,46 @@ export class LocationMinimap extends Component {
             Math.max(1, this.panelWidth - 10) / graphWidth,
             Math.max(1, this.panelHeight - 10) / graphHeight,
         );
-        const centerX = (bounds.minX + bounds.maxX) * 0.5;
-        const centerY = (bounds.minY + bounds.maxY) * 0.5;
+        const center = new Vec2(
+            (bounds.minX + bounds.maxX) * 0.5,
+            (bounds.minY + bounds.maxY) * 0.5,
+        );
         this.content.setPosition(0, 0, 0);
         this.content.setScale(scale, scale, 1);
 
         for (const edge of this.sceneEdges) {
-            const a = this.positions.get(edge.a);
-            const b = this.positions.get(edge.b);
+            const a = this.nodeLayouts.get(edge.a);
+            const b = this.nodeLayouts.get(edge.b);
             if (!a || !b) continue;
-            const directions = this.getEdgePortDirections(edge, a, b);
-            const directionA = directions.a;
-            const directionB = directions.b;
-            const start = this.getPort(a, directionA);
-            const end = this.getPort(b, directionB);
+            const start = this.getBoundaryPoint(a, new Vec2(b.x, b.y));
+            const end = this.getBoundaryPoint(b, new Vec2(a.x, a.y));
             const active = edge.key === highlight.recommendedEdgeKey;
             graph.strokeColor = active
                 ? new Color(245, 184, 70, 255)
-                : new Color(220, 231, 218, 205);
+                : new Color(220, 231, 218, 215);
             graph.lineWidth = active ? 5 : 3;
-            graph.moveTo(start.x - centerX, start.y - centerY);
-            graph.bezierCurveTo(
-                start.x + directionA.x * 18 - centerX,
-                start.y + directionA.y * 18 - centerY,
-                end.x + directionB.x * 18 - centerX,
-                end.y + directionB.y * 18 - centerY,
-                end.x - centerX,
-                end.y - centerY,
-            );
+            graph.moveTo(start.x - center.x, start.y - center.y);
+            graph.lineTo(end.x - center.x, end.y - center.y);
             graph.stroke();
         }
 
         for (const exit of this.exits) {
-            const scene = this.positions.get(exit.sceneId);
-            const exitPosition = exitPositions.get(exit.key);
-            if (!scene || !exitPosition) continue;
+            const node = this.nodeLayouts.get(exit.sceneId);
+            if (!node) continue;
+            const start = this.getBoundaryPoint(node, exit.position);
             const active = exit.entryId === highlight.targetExitId;
-            const port = this.getPort(scene, exit.direction);
             graph.strokeColor = active
                 ? new Color(245, 184, 70, 255)
-                : new Color(220, 231, 218, 185);
+                : new Color(220, 231, 218, 195);
             graph.lineWidth = active ? 5 : 2;
-            graph.moveTo(port.x - centerX, port.y - centerY);
-            graph.lineTo(exitPosition.x - centerX, exitPosition.y - centerY);
+            graph.moveTo(start.x - center.x, start.y - center.y);
+            graph.lineTo(exit.position.x - center.x, exit.position.y - center.y);
             graph.stroke();
             graph.fillColor = active
                 ? new Color(245, 184, 70, 255)
                 : new Color(190, 205, 194, 235);
-            const x = exitPosition.x - centerX;
-            const y = exitPosition.y - centerY;
+            const x = exit.position.x - center.x;
+            const y = exit.position.y - center.y;
             graph.moveTo(x, y + 7);
             graph.lineTo(x + 7, y);
             graph.lineTo(x, y - 7);
@@ -370,52 +252,39 @@ export class LocationMinimap extends Component {
             graph.fill();
         }
 
-        for (const [sceneId, position] of this.positions) {
+        for (const [sceneId, nodeLayout] of this.nodeLayouts) {
             this.createSceneNode(
                 sceneId,
-                position.x - centerX,
-                position.y - centerY,
+                nodeLayout,
+                center,
                 sceneId === this.currentSceneId,
                 sceneId === highlight.targetSceneId,
             );
         }
     }
 
-    private getEdgePortDirections(edge: SceneEdge, a: Vec2, b: Vec2): { a: Vec2; b: Vec2 } {
-        const forward = this.directedEdges.find(
-            (item) => item.from === edge.a && item.to === edge.b,
-        );
-        if (forward) return { a: forward.direction, b: forward.targetDirection };
-        const reverse = this.directedEdges.find(
-            (item) => item.from === edge.b && item.to === edge.a,
-        );
-        if (reverse) return { a: reverse.targetDirection, b: reverse.direction };
-        const delta = b.clone().subtract(a);
-        if (Math.abs(delta.x) >= Math.abs(delta.y)) {
-            const sign = Math.sign(delta.x) || 1;
-            return { a: new Vec2(sign, 0), b: new Vec2(-sign, 0) };
-        }
-        const sign = Math.sign(delta.y) || 1;
-        return { a: new Vec2(0, sign), b: new Vec2(0, -sign) };
-    }
-
-    private getPort(center: Vec2, direction: Vec2): Vec2 {
-        return new Vec2(
-            center.x + direction.x * NODE_WIDTH * 0.5,
-            center.y + direction.y * NODE_HEIGHT * 0.5,
-        );
+    private getBoundaryPoint(node: MinimapNodeLayout, toward: Vec2): Vec2 {
+        const dx = toward.x - node.x;
+        const dy = toward.y - node.y;
+        const halfWidth = Math.max(1, (node.width ?? DEFAULT_NODE_SIZE) * 0.5);
+        const halfHeight = Math.max(1, (node.height ?? DEFAULT_NODE_SIZE) * 0.5);
+        const divisor = Math.max(Math.abs(dx) / halfWidth, Math.abs(dy) / halfHeight, 0.001);
+        return new Vec2(node.x + dx / divisor, node.y + dy / divisor);
     }
 
     private createSceneNode(
         sceneId: string,
-        x: number,
-        y: number,
+        layout: MinimapNodeLayout,
+        center: Vec2,
         current: boolean,
         target: boolean,
     ): void {
+        const width = layout.width ?? DEFAULT_NODE_SIZE;
+        const height = layout.height ?? DEFAULT_NODE_SIZE;
+        const radius = Math.min(layout.radius ?? Math.min(width, height) * 0.5, width * 0.5, height * 0.5);
         const node = new Node(`MinimapScene-${sceneId}`);
         node.layer = Layers.Enum.UI_2D;
-        node.addComponent(UITransform).setContentSize(NODE_WIDTH, NODE_HEIGHT);
+        node.addComponent(UITransform).setContentSize(width, height);
         const graphics = node.addComponent(Graphics);
         graphics.fillColor = target
             ? new Color(177, 119, 39, 225)
@@ -430,10 +299,10 @@ export class LocationMinimap extends Component {
                     ? new Color(166, 244, 231, 255)
                     : new Color(218, 228, 215, 220);
         graphics.lineWidth = current || target ? 4 : 2;
-        graphics.roundRect(-NODE_WIDTH * 0.5, -NODE_HEIGHT * 0.5, NODE_WIDTH, NODE_HEIGHT, 7);
+        graphics.roundRect(-width * 0.5, -height * 0.5, width, height, radius);
         graphics.fill();
         graphics.stroke();
-        node.setPosition(x, y, 0);
+        node.setPosition(layout.x - center.x, layout.y - center.y, 0);
         this.content!.addChild(node);
     }
 
@@ -473,46 +342,30 @@ export class LocationMinimap extends Component {
         return '';
     }
 
-    private getExitPositions(): Map<string, Vec2> {
-        const positions = new Map<string, Vec2>();
-        const sideCounts = new Map<string, number>();
-        for (const exit of this.exits) {
-            const scene = this.positions.get(exit.sceneId);
-            if (!scene) continue;
-            const side = `${exit.sceneId}/${exit.direction.x}/${exit.direction.y}`;
-            const index = sideCounts.get(side) ?? 0;
-            sideCounts.set(side, index + 1);
-            const perpendicular = new Vec2(-exit.direction.y, exit.direction.x);
-            positions.set(exit.key, new Vec2(
-                scene.x + exit.direction.x * (NODE_WIDTH * 0.5 + 22) + perpendicular.x * index * 18,
-                scene.y + exit.direction.y * (NODE_HEIGHT * 0.5 + 22) + perpendicular.y * index * 18,
-            ));
+    private getGraphBounds(): { minX: number; maxX: number; minY: number; maxY: number } {
+        const minX: number[] = [];
+        const maxX: number[] = [];
+        const minY: number[] = [];
+        const maxY: number[] = [];
+        for (const layout of this.nodeLayouts.values()) {
+            const halfWidth = (layout.width ?? DEFAULT_NODE_SIZE) * 0.5;
+            const halfHeight = (layout.height ?? DEFAULT_NODE_SIZE) * 0.5;
+            minX.push(layout.x - halfWidth);
+            maxX.push(layout.x + halfWidth);
+            minY.push(layout.y - halfHeight);
+            maxY.push(layout.y + halfHeight);
         }
-        return positions;
-    }
-
-    private getGraphBounds(exitPositions: Map<string, Vec2>): {
-        minX: number; maxX: number; minY: number; maxY: number;
-    } {
-        const all = [...this.positions.values(), ...exitPositions.values()];
-        if (all.length === 0) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+        for (const exit of this.exits) {
+            minX.push(exit.position.x - 8);
+            maxX.push(exit.position.x + 8);
+            minY.push(exit.position.y - 8);
+            maxY.push(exit.position.y + 8);
+        }
         return {
-            minX: Math.min(...all.map((point) => point.x)) - NODE_WIDTH * 0.5 - 7,
-            maxX: Math.max(...all.map((point) => point.x)) + NODE_WIDTH * 0.5 + 7,
-            minY: Math.min(...all.map((point) => point.y)) - NODE_HEIGHT * 0.5 - 7,
-            maxY: Math.max(...all.map((point) => point.y)) + NODE_HEIGHT * 0.5 + 7,
-        };
-    }
-
-    private getPositionBounds(positions: Map<string, Vec2>): {
-        minX: number; maxX: number; minY: number; maxY: number;
-    } {
-        const points = [...positions.values()];
-        return {
-            minX: Math.min(...points.map((point) => point.x)),
-            maxX: Math.max(...points.map((point) => point.x)),
-            minY: Math.min(...points.map((point) => point.y)),
-            maxY: Math.max(...points.map((point) => point.y)),
+            minX: Math.min(...minX) - 5,
+            maxX: Math.max(...maxX) + 5,
+            minY: Math.min(...minY) - 5,
+            maxY: Math.max(...maxY) + 5,
         };
     }
 
