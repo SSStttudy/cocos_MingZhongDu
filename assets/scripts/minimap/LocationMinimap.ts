@@ -2,34 +2,38 @@ import {
     _decorator,
     Color,
     Component,
-    EventTouch,
     Graphics,
-    Label,
     Layers,
     Node,
     Size,
     UITransform,
     Vec2,
 } from 'cc';
-import { LocationSceneConfig } from '../location/LocationConfig';
+import { LocationSceneConfig, LocationTransition } from '../location/LocationConfig';
 import { TourStep } from '../tour/TourConfig';
 
 const { ccclass } = _decorator;
 
 type SceneEdge = { a: string; b: string; key: string };
-type DirectedEdge = { from: string; to: string; key: string };
-type ExitMark = { sceneId: string; entryId: string; key: string };
+type DirectedEdge = {
+    from: string;
+    to: string;
+    key: string;
+    direction: Vec2;
+    targetDirection: Vec2;
+};
+type ExitMark = { sceneId: string; entryId: string; key: string; direction: Vec2 };
 type HighlightState = {
     targetSceneId: string;
     recommendedEdgeKey: string;
     targetExitId: string;
 };
 
-const NODE_WIDTH = 52;
-const NODE_HEIGHT = 30;
-const COLUMN_GAP = 70;
-const ROW_GAP = 48;
-const COMPONENT_GAP = 58;
+const NODE_WIDTH = 46;
+const NODE_HEIGHT = 24;
+const COLUMN_GAP = 66;
+const ROW_GAP = 42;
+const COMPONENT_GAP = 52;
 
 @ccclass('LocationMinimap')
 export class LocationMinimap extends Component {
@@ -38,18 +42,13 @@ export class LocationMinimap extends Component {
     private currentSceneId = '';
     private root: Node | null = null;
     private content: Node | null = null;
-    private panelGraphics: Graphics | null = null;
     private graphGraphics: Graphics | null = null;
-    private titleLabel: Label | null = null;
-    private toggleLabel: Label | null = null;
     private sceneEdges: SceneEdge[] = [];
     private directedEdges: DirectedEdge[] = [];
     private exits: ExitMark[] = [];
     private positions = new Map<string, Vec2>();
-    private collapsed = false;
     private panelWidth = 0;
     private panelHeight = 0;
-    private visibleSize = new Size();
     private elapsed = 0;
     private lastStateKey = '';
     private warnedMissingTargets = new Set<string>();
@@ -81,21 +80,16 @@ export class LocationMinimap extends Component {
 
     layout(visibleSize: Size): void {
         if (!this.root) return;
-        this.visibleSize.set(visibleSize.width, visibleSize.height);
-        const width = this.collapsed
-            ? 84
-            : Math.max(270, Math.min(390, visibleSize.width * 0.34));
-        const height = this.collapsed
-            ? 42
-            : Math.max(145, Math.min(220, visibleSize.height * 0.3));
+        const width = Math.max(250, Math.min(350, visibleSize.width * 0.3));
+        const height = Math.max(120, Math.min(185, visibleSize.height * 0.27));
         const sizeChanged = Math.abs(width - this.panelWidth) > 0.5
             || Math.abs(height - this.panelHeight) > 0.5;
         this.panelWidth = width;
         this.panelHeight = height;
         this.root.getComponent(UITransform)?.setContentSize(width, height);
         this.root.setPosition(
-            visibleSize.width * 0.5 - width * 0.5 - 24,
-            visibleSize.height * 0.5 - height * 0.5 - 74,
+            visibleSize.width * 0.5 - width * 0.5 - 8,
+            visibleSize.height * 0.5 - height * 0.5 - 8,
             0,
         );
         if (sizeChanged) this.redraw();
@@ -105,7 +99,6 @@ export class LocationMinimap extends Component {
         this.root?.destroy();
         this.root = null;
         this.content = null;
-        this.panelGraphics = null;
         this.graphGraphics = null;
     }
 
@@ -127,10 +120,11 @@ export class LocationMinimap extends Component {
     private buildGraph(): void {
         if (!this.config) return;
         const sceneIds = Object.keys(this.config.scenes).sort(this.compareSceneIds);
-        const adjacency = new Map(sceneIds.map((id) => [id, new Set<string>()]));
         const edgeKeys = new Set<string>();
         for (const sceneId of sceneIds) {
-            for (const transition of this.config.scenes[sceneId].transitions) {
+            const scene = this.config.scenes[sceneId];
+            for (const transition of scene.transitions) {
+                const direction = this.getTransitionDirection(sceneId, transition);
                 if (transition.targetSceneId) {
                     if (!this.config.scenes[transition.targetSceneId]) {
                         const warningKey = `${sceneId}/${transition.id}/${transition.targetSceneId}`;
@@ -141,9 +135,17 @@ export class LocationMinimap extends Component {
                         continue;
                     }
                     const key = this.edgeKey(sceneId, transition.targetSceneId);
-                    this.directedEdges.push({ from: sceneId, to: transition.targetSceneId, key });
-                    adjacency.get(sceneId)?.add(transition.targetSceneId);
-                    adjacency.get(transition.targetSceneId)?.add(sceneId);
+                    this.directedEdges.push({
+                        from: sceneId,
+                        to: transition.targetSceneId,
+                        key,
+                        direction,
+                        targetDirection: this.getSpawnDirection(
+                            transition.targetSceneId,
+                            transition.targetSpawnId,
+                            direction.clone().multiplyScalar(-1),
+                        ),
+                    });
                     if (!edgeKeys.has(key)) {
                         edgeKeys.add(key);
                         this.sceneEdges.push({ a: sceneId, b: transition.targetSceneId, key });
@@ -154,72 +156,47 @@ export class LocationMinimap extends Component {
                         sceneId,
                         entryId: transition.overworldEntryId,
                         key: `${sceneId}/${transition.id}`,
+                        direction,
                     });
                 }
             }
         }
-        this.positions = this.layoutGraph(sceneIds, adjacency);
+        this.positions = this.layoutGraph(sceneIds);
     }
 
-    private layoutGraph(
-        sceneIds: string[],
-        adjacency: Map<string, Set<string>>,
-    ): Map<string, Vec2> {
+    /** Place connected scenes on the same side as their transition in the source photograph. */
+    private layoutGraph(sceneIds: string[]): Map<string, Vec2> {
         const positions = new Map<string, Vec2>();
         const unvisited = new Set(sceneIds);
         const roots = [this.config?.initialSceneId ?? '', ...sceneIds]
             .filter((id, index, all) => id && all.indexOf(id) === index);
-        let componentTop = 0;
+        let nextComponentY = 0;
 
-        for (const requestedRoot of roots) {
-            if (!unvisited.has(requestedRoot)) continue;
-            const component: string[] = [];
-            const discover = [requestedRoot];
-            unvisited.delete(requestedRoot);
-            while (discover.length > 0) {
-                const sceneId = discover.shift()!;
-                component.push(sceneId);
-                const neighbors = [...(adjacency.get(sceneId) ?? [])].sort(this.compareSceneIds);
-                for (const neighbor of neighbors) {
-                    if (!unvisited.has(neighbor)) continue;
-                    unvisited.delete(neighbor);
-                    discover.push(neighbor);
-                }
-            }
-
-            const levels = new Map<string, number>([[requestedRoot, 0]]);
-            const queue = [requestedRoot];
+        for (const root of roots) {
+            if (!unvisited.has(root)) continue;
+            const componentIds: string[] = [root];
+            positions.set(root, new Vec2(0, nextComponentY));
+            unvisited.delete(root);
+            const queue = [root];
             while (queue.length > 0) {
                 const sceneId = queue.shift()!;
-                const nextLevel = (levels.get(sceneId) ?? 0) + 1;
-                const neighbors = [...(adjacency.get(sceneId) ?? [])].sort(this.compareSceneIds);
-                for (const neighbor of neighbors) {
-                    if (levels.has(neighbor)) continue;
-                    levels.set(neighbor, nextLevel);
+                const origin = positions.get(sceneId)!;
+                for (const neighbor of this.getNeighbors(sceneId)) {
+                    if (!unvisited.has(neighbor)) continue;
+                    const direction = this.getRelationDirection(sceneId, neighbor);
+                    const desired = new Vec2(
+                        origin.x + direction.x * COLUMN_GAP,
+                        origin.y + direction.y * ROW_GAP,
+                    );
+                    const position = this.findFreePosition(desired, direction, positions);
+                    positions.set(neighbor, position);
+                    componentIds.push(neighbor);
+                    unvisited.delete(neighbor);
                     queue.push(neighbor);
                 }
             }
-
-            const grouped = new Map<number, string[]>();
-            for (const sceneId of component) {
-                const level = levels.get(sceneId) ?? 0;
-                const group = grouped.get(level) ?? [];
-                group.push(sceneId);
-                grouped.set(level, group);
-            }
-            const maxRows = Math.max(1, ...[...grouped.values()].map((group) => group.length));
-            const componentHeight = Math.max(NODE_HEIGHT, (maxRows - 1) * ROW_GAP + NODE_HEIGHT);
-            const centerY = componentTop - componentHeight * 0.5;
-            for (const [level, group] of [...grouped.entries()].sort((a, b) => a[0] - b[0])) {
-                group.sort(this.compareSceneIds);
-                group.forEach((sceneId, index) => {
-                    positions.set(sceneId, new Vec2(
-                        level * COLUMN_GAP,
-                        centerY + ((group.length - 1) * 0.5 - index) * ROW_GAP,
-                    ));
-                });
-            }
-            componentTop -= componentHeight + COMPONENT_GAP;
+            const componentBottom = Math.min(...componentIds.map((id) => positions.get(id)!.y));
+            nextComponentY = componentBottom - COMPONENT_GAP;
         }
 
         if (positions.size > 0) {
@@ -234,45 +211,80 @@ export class LocationMinimap extends Component {
         return positions;
     }
 
+    private getNeighbors(sceneId: string): string[] {
+        const neighbors = new Set<string>();
+        for (const edge of this.directedEdges) {
+            if (edge.from === sceneId) neighbors.add(edge.to);
+            if (edge.to === sceneId) neighbors.add(edge.from);
+        }
+        return [...neighbors].sort(this.compareSceneIds);
+    }
+
+    private getRelationDirection(from: string, to: string): Vec2 {
+        const direct = this.directedEdges.find((edge) => edge.from === from && edge.to === to);
+        if (direct) return direct.direction.clone();
+        const reverse = this.directedEdges.find((edge) => edge.from === to && edge.to === from);
+        if (reverse) return reverse.direction.clone().multiplyScalar(-1);
+        return new Vec2(1, 0);
+    }
+
+    private findFreePosition(
+        desired: Vec2,
+        direction: Vec2,
+        positions: Map<string, Vec2>,
+    ): Vec2 {
+        const offsets = [0, 1, -1, 2, -2, 3, -3];
+        for (const offset of offsets) {
+            const candidate = desired.clone();
+            if (Math.abs(direction.x) >= Math.abs(direction.y)) candidate.y += offset * ROW_GAP;
+            else candidate.x += offset * COLUMN_GAP;
+            if (this.isPositionFree(candidate, positions)) return candidate;
+        }
+        return new Vec2(desired.x, desired.y - ROW_GAP * 4);
+    }
+
+    private isPositionFree(candidate: Vec2, positions: Map<string, Vec2>): boolean {
+        for (const point of positions.values()) {
+            if (
+                Math.abs(candidate.x - point.x) < NODE_WIDTH + 10
+                && Math.abs(candidate.y - point.y) < NODE_HEIGHT + 10
+            ) return false;
+        }
+        return true;
+    }
+
+    private getTransitionDirection(sceneId: string, transition: LocationTransition): Vec2 {
+        const scene = this.config?.scenes[sceneId];
+        if (!scene || transition.polygon.length === 0) return new Vec2(1, 0);
+        const center = new Vec2();
+        for (const point of transition.polygon) center.add(point);
+        center.multiplyScalar(1 / transition.polygon.length);
+        const normalizedX = center.x / Math.max(1, scene.worldSize.width * 0.5);
+        const normalizedY = center.y / Math.max(1, scene.worldSize.height * 0.5);
+        // Horizontal placement is the primary cue in the panoramic photographs.
+        if (Math.abs(normalizedX) >= 0.12) return new Vec2(Math.sign(normalizedX), 0);
+        if (Math.abs(normalizedY) >= 0.12) return new Vec2(0, Math.sign(normalizedY));
+        return new Vec2(1, 0);
+    }
+
+    private getSpawnDirection(sceneId: string, spawnId: string | undefined, fallback: Vec2): Vec2 {
+        const scene = this.config?.scenes[sceneId];
+        const spawn = scene?.spawns.find((item) => item.id === spawnId);
+        if (!scene || !spawn) return fallback;
+        const normalizedX = spawn.position.x / Math.max(1, scene.worldSize.width * 0.5);
+        const normalizedY = spawn.position.y / Math.max(1, scene.worldSize.height * 0.5);
+        if (Math.abs(normalizedX) >= 0.12) return new Vec2(Math.sign(normalizedX), 0);
+        if (Math.abs(normalizedY) >= 0.12) return new Vec2(0, Math.sign(normalizedY));
+        return fallback;
+    }
+
     private createUi(): void {
         this.root = new Node('LocationMinimap');
         this.root.layer = Layers.Enum.UI_2D;
         this.root.addComponent(UITransform);
-        this.panelGraphics = this.root.addComponent(Graphics);
         this.node.addChild(this.root);
         const tourUiIndex = this.node.children.findIndex((child) => child.name === 'TourGuideUI');
         if (tourUiIndex >= 0) this.root.setSiblingIndex(tourUiIndex);
-
-        const title = new Node('MinimapTitle');
-        title.layer = Layers.Enum.UI_2D;
-        title.addComponent(UITransform).setContentSize(180, 30);
-        this.titleLabel = title.addComponent(Label);
-        this.titleLabel.string = '分镜导览';
-        this.titleLabel.fontSize = 18;
-        this.titleLabel.lineHeight = 24;
-        this.titleLabel.color = new Color(246, 235, 198, 255);
-        this.root.addChild(title);
-
-        const toggle = new Node('MinimapToggle');
-        toggle.layer = Layers.Enum.UI_2D;
-        toggle.addComponent(UITransform).setContentSize(64, 32);
-        const toggleGraphics = toggle.addComponent(Graphics);
-        toggleGraphics.fillColor = new Color(62, 76, 76, 225);
-        toggleGraphics.strokeColor = new Color(232, 220, 178, 210);
-        toggleGraphics.lineWidth = 2;
-        toggleGraphics.roundRect(-32, -16, 64, 32, 10);
-        toggleGraphics.fill();
-        toggleGraphics.stroke();
-        const toggleText = new Node('ToggleLabel');
-        toggleText.layer = Layers.Enum.UI_2D;
-        toggleText.addComponent(UITransform).setContentSize(60, 28);
-        this.toggleLabel = toggleText.addComponent(Label);
-        this.toggleLabel.fontSize = 15;
-        this.toggleLabel.lineHeight = 22;
-        this.toggleLabel.color = new Color(255, 248, 220, 255);
-        toggle.addChild(toggleText);
-        toggle.on(Node.EventType.TOUCH_END, this.toggleCollapsed, this);
-        this.root.addChild(toggle);
 
         this.content = new Node('MinimapGraph');
         this.content.layer = Layers.Enum.UI_2D;
@@ -282,45 +294,10 @@ export class LocationMinimap extends Component {
     }
 
     private redraw(): void {
-        if (!this.root || !this.content || !this.panelGraphics || !this.graphGraphics) return;
-        this.drawPanel();
+        if (!this.content || !this.graphGraphics) return;
         for (const child of [...this.content.children]) child.destroy();
         this.graphGraphics.clear();
-        this.titleLabel!.node.active = !this.collapsed;
-        this.content.active = !this.collapsed;
-        const toggle = this.root.getChildByName('MinimapToggle');
-        if (toggle) {
-            toggle.setPosition(
-                this.collapsed ? 0 : this.panelWidth * 0.5 - 46,
-                this.collapsed ? 0 : this.panelHeight * 0.5 - 24,
-                0,
-            );
-        }
-        if (this.toggleLabel) this.toggleLabel.string = this.collapsed ? '地图' : '收起';
-        if (this.collapsed) return;
-        this.titleLabel!.node.setPosition(
-            -this.panelWidth * 0.5 + 105,
-            this.panelHeight * 0.5 - 25,
-            0,
-        );
         this.drawGraph();
-    }
-
-    private drawPanel(): void {
-        const graphics = this.panelGraphics!;
-        graphics.clear();
-        graphics.fillColor = new Color(25, 38, 41, 205);
-        graphics.strokeColor = new Color(235, 224, 183, 205);
-        graphics.lineWidth = 2;
-        graphics.roundRect(
-            -this.panelWidth * 0.5,
-            -this.panelHeight * 0.5,
-            this.panelWidth,
-            this.panelHeight,
-            this.collapsed ? 12 : 16,
-        );
-        graphics.fill();
-        graphics.stroke();
     }
 
     private drawGraph(): void {
@@ -331,24 +308,39 @@ export class LocationMinimap extends Component {
         const bounds = this.getGraphBounds(exitPositions);
         const graphWidth = Math.max(1, bounds.maxX - bounds.minX);
         const graphHeight = Math.max(1, bounds.maxY - bounds.minY);
-        const availableWidth = Math.max(1, this.panelWidth - 28);
-        const availableHeight = Math.max(1, this.panelHeight - 60);
-        const scale = Math.min(1, availableWidth / graphWidth, availableHeight / graphHeight);
+        const scale = Math.min(
+            1,
+            Math.max(1, this.panelWidth - 10) / graphWidth,
+            Math.max(1, this.panelHeight - 10) / graphHeight,
+        );
         const centerX = (bounds.minX + bounds.maxX) * 0.5;
         const centerY = (bounds.minY + bounds.maxY) * 0.5;
-        this.content.setPosition(0, -16, 0);
+        this.content.setPosition(0, 0, 0);
         this.content.setScale(scale, scale, 1);
 
         for (const edge of this.sceneEdges) {
             const a = this.positions.get(edge.a);
             const b = this.positions.get(edge.b);
             if (!a || !b) continue;
-            graph.strokeColor = edge.key === highlight.recommendedEdgeKey
-                ? new Color(239, 178, 67, 255)
-                : new Color(143, 164, 160, 185);
-            graph.lineWidth = edge.key === highlight.recommendedEdgeKey ? 6 : 3;
-            graph.moveTo(a.x - centerX, a.y - centerY);
-            graph.lineTo(b.x - centerX, b.y - centerY);
+            const directions = this.getEdgePortDirections(edge, a, b);
+            const directionA = directions.a;
+            const directionB = directions.b;
+            const start = this.getPort(a, directionA);
+            const end = this.getPort(b, directionB);
+            const active = edge.key === highlight.recommendedEdgeKey;
+            graph.strokeColor = active
+                ? new Color(245, 184, 70, 255)
+                : new Color(220, 231, 218, 205);
+            graph.lineWidth = active ? 5 : 3;
+            graph.moveTo(start.x - centerX, start.y - centerY);
+            graph.bezierCurveTo(
+                start.x + directionA.x * 18 - centerX,
+                start.y + directionA.y * 18 - centerY,
+                end.x + directionB.x * 18 - centerX,
+                end.y + directionB.y * 18 - centerY,
+                end.x - centerX,
+                end.y - centerY,
+            );
             graph.stroke();
         }
 
@@ -357,25 +349,25 @@ export class LocationMinimap extends Component {
             const exitPosition = exitPositions.get(exit.key);
             if (!scene || !exitPosition) continue;
             const active = exit.entryId === highlight.targetExitId;
+            const port = this.getPort(scene, exit.direction);
             graph.strokeColor = active
-                ? new Color(239, 178, 67, 255)
-                : new Color(143, 164, 160, 160);
+                ? new Color(245, 184, 70, 255)
+                : new Color(220, 231, 218, 185);
             graph.lineWidth = active ? 5 : 2;
-            graph.moveTo(scene.x - centerX, scene.y - centerY);
+            graph.moveTo(port.x - centerX, port.y - centerY);
             graph.lineTo(exitPosition.x - centerX, exitPosition.y - centerY);
             graph.stroke();
             graph.fillColor = active
-                ? new Color(239, 178, 67, 255)
-                : new Color(116, 139, 136, 235);
+                ? new Color(245, 184, 70, 255)
+                : new Color(190, 205, 194, 235);
             const x = exitPosition.x - centerX;
             const y = exitPosition.y - centerY;
-            graph.moveTo(x, y + 8);
-            graph.lineTo(x + 8, y);
-            graph.lineTo(x, y - 8);
-            graph.lineTo(x - 8, y);
+            graph.moveTo(x, y + 7);
+            graph.lineTo(x + 7, y);
+            graph.lineTo(x, y - 7);
+            graph.lineTo(x - 7, y);
             graph.close();
             graph.fill();
-            this.createGraphLabel(this.exitLabel(exit.entryId), x, y - 17, 12, 54);
         }
 
         for (const [sceneId, position] of this.positions) {
@@ -387,6 +379,31 @@ export class LocationMinimap extends Component {
                 sceneId === highlight.targetSceneId,
             );
         }
+    }
+
+    private getEdgePortDirections(edge: SceneEdge, a: Vec2, b: Vec2): { a: Vec2; b: Vec2 } {
+        const forward = this.directedEdges.find(
+            (item) => item.from === edge.a && item.to === edge.b,
+        );
+        if (forward) return { a: forward.direction, b: forward.targetDirection };
+        const reverse = this.directedEdges.find(
+            (item) => item.from === edge.b && item.to === edge.a,
+        );
+        if (reverse) return { a: reverse.targetDirection, b: reverse.direction };
+        const delta = b.clone().subtract(a);
+        if (Math.abs(delta.x) >= Math.abs(delta.y)) {
+            const sign = Math.sign(delta.x) || 1;
+            return { a: new Vec2(sign, 0), b: new Vec2(-sign, 0) };
+        }
+        const sign = Math.sign(delta.y) || 1;
+        return { a: new Vec2(0, sign), b: new Vec2(0, -sign) };
+    }
+
+    private getPort(center: Vec2, direction: Vec2): Vec2 {
+        return new Vec2(
+            center.x + direction.x * NODE_WIDTH * 0.5,
+            center.y + direction.y * NODE_HEIGHT * 0.5,
+        );
     }
 
     private createSceneNode(
@@ -401,47 +418,21 @@ export class LocationMinimap extends Component {
         node.addComponent(UITransform).setContentSize(NODE_WIDTH, NODE_HEIGHT);
         const graphics = node.addComponent(Graphics);
         graphics.fillColor = target
-            ? new Color(174, 117, 39, 245)
+            ? new Color(177, 119, 39, 225)
             : current
-                ? new Color(48, 115, 116, 245)
-                : new Color(65, 82, 83, 235);
+                ? new Color(43, 112, 114, 235)
+                : new Color(42, 56, 57, 180);
         graphics.strokeColor = current && target
-            ? new Color(158, 232, 222, 255)
+            ? new Color(157, 239, 226, 255)
             : target
-                ? new Color(255, 224, 142, 255)
+                ? new Color(255, 226, 145, 255)
                 : current
-                    ? new Color(170, 239, 229, 255)
-                    : new Color(188, 198, 184, 205);
+                    ? new Color(166, 244, 231, 255)
+                    : new Color(218, 228, 215, 220);
         graphics.lineWidth = current || target ? 4 : 2;
-        graphics.roundRect(-NODE_WIDTH * 0.5, -NODE_HEIGHT * 0.5, NODE_WIDTH, NODE_HEIGHT, 8);
+        graphics.roundRect(-NODE_WIDTH * 0.5, -NODE_HEIGHT * 0.5, NODE_WIDTH, NODE_HEIGHT, 7);
         graphics.fill();
         graphics.stroke();
-        node.setPosition(x, y, 0);
-        this.content!.addChild(node);
-
-        const labelNode = new Node('SceneLabel');
-        labelNode.layer = Layers.Enum.UI_2D;
-        labelNode.addComponent(UITransform).setContentSize(NODE_WIDTH - 4, NODE_HEIGHT - 2);
-        const label = labelNode.addComponent(Label);
-        label.string = this.sceneLabel(sceneId);
-        label.fontSize = 15;
-        label.lineHeight = 20;
-        label.color = new Color(255, 249, 226, 255);
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        node.addChild(labelNode);
-    }
-
-    private createGraphLabel(text: string, x: number, y: number, fontSize: number, width: number): void {
-        const node = new Node('ExitLabel');
-        node.layer = Layers.Enum.UI_2D;
-        node.addComponent(UITransform).setContentSize(width, 18);
-        const label = node.addComponent(Label);
-        label.string = text;
-        label.fontSize = fontSize;
-        label.lineHeight = 16;
-        label.color = new Color(218, 224, 208, 245);
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
         node.setPosition(x, y, 0);
         this.content!.addChild(node);
     }
@@ -484,22 +475,17 @@ export class LocationMinimap extends Component {
 
     private getExitPositions(): Map<string, Vec2> {
         const positions = new Map<string, Vec2>();
-        const byScene = new Map<string, ExitMark[]>();
+        const sideCounts = new Map<string, number>();
         for (const exit of this.exits) {
-            const list = byScene.get(exit.sceneId) ?? [];
-            list.push(exit);
-            byScene.set(exit.sceneId, list);
-        }
-        for (const [sceneId, exits] of byScene) {
-            const scene = this.positions.get(sceneId);
+            const scene = this.positions.get(exit.sceneId);
             if (!scene) continue;
-            exits.sort((a, b) => a.entryId.localeCompare(b.entryId));
-            exits.forEach((exit, index) => positions.set(
-                exit.key,
-                new Vec2(
-                    scene.x + (index - (exits.length - 1) * 0.5) * 34,
-                    scene.y - 48,
-                ),
+            const side = `${exit.sceneId}/${exit.direction.x}/${exit.direction.y}`;
+            const index = sideCounts.get(side) ?? 0;
+            sideCounts.set(side, index + 1);
+            const perpendicular = new Vec2(-exit.direction.y, exit.direction.x);
+            positions.set(exit.key, new Vec2(
+                scene.x + exit.direction.x * (NODE_WIDTH * 0.5 + 22) + perpendicular.x * index * 18,
+                scene.y + exit.direction.y * (NODE_HEIGHT * 0.5 + 22) + perpendicular.y * index * 18,
             ));
         }
         return positions;
@@ -511,10 +497,10 @@ export class LocationMinimap extends Component {
         const all = [...this.positions.values(), ...exitPositions.values()];
         if (all.length === 0) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
         return {
-            minX: Math.min(...all.map((point) => point.x)) - NODE_WIDTH * 0.5 - 8,
-            maxX: Math.max(...all.map((point) => point.x)) + NODE_WIDTH * 0.5 + 8,
-            minY: Math.min(...all.map((point) => point.y)) - 32,
-            maxY: Math.max(...all.map((point) => point.y)) + NODE_HEIGHT * 0.5 + 8,
+            minX: Math.min(...all.map((point) => point.x)) - NODE_WIDTH * 0.5 - 7,
+            maxX: Math.max(...all.map((point) => point.x)) + NODE_WIDTH * 0.5 + 7,
+            minY: Math.min(...all.map((point) => point.y)) - NODE_HEIGHT * 0.5 - 7,
+            maxY: Math.max(...all.map((point) => point.y)) + NODE_HEIGHT * 0.5 + 7,
         };
     }
 
@@ -530,14 +516,6 @@ export class LocationMinimap extends Component {
         };
     }
 
-    private toggleCollapsed(event?: EventTouch): void {
-        if (event) event.propagationStopped = true;
-        this.collapsed = !this.collapsed;
-        this.panelWidth = 0;
-        this.panelHeight = 0;
-        this.layout(this.visibleSize);
-    }
-
     private getStateKey(): string {
         const step = this.getTourStep?.();
         return [
@@ -551,27 +529,6 @@ export class LocationMinimap extends Component {
 
     private edgeKey(a: string, b: string): string {
         return [a, b].sort(this.compareSceneIds).join('|');
-    }
-
-    private sceneLabel(sceneId: string): string {
-        return ({
-            'entrance-gate': '入口',
-            'main-road': '主路',
-            'cafe-garden': '庭院',
-            'leisure-plaza': '广场',
-            'visitor-building': '展馆',
-            exterior: '外院',
-            interior: '室内',
-            main: '全景',
-        } as Record<string, string>)[sceneId] ?? sceneId;
-    }
-
-    private exitLabel(entryId: string): string {
-        if (entryId.includes('-west-')) return '西出口';
-        if (entryId.includes('-east-')) return '东出口';
-        if (entryId.includes('-north-')) return '北出口';
-        if (entryId.includes('-south-')) return '南出口';
-        return '出口';
     }
 
     private compareSceneIds = (a: string, b: string): number => (
