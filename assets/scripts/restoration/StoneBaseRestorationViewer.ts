@@ -1,28 +1,55 @@
 import {
-    _decorator, Color, Component, EventTouch, Graphics, Label, Layers, Mask,
-    Node, resources, Sprite, SpriteFrame, UITransform, Vec2, view,
+    _decorator,
+    Color,
+    Component,
+    EventTouch,
+    Graphics,
+    Label,
+    Layers,
+    Mask,
+    Node,
+    resources,
+    Sprite,
+    SpriteFrame,
+    UITransform,
+    Vec2,
+    view,
 } from 'cc';
-import { LocationInteractionContext, LocationInteractionRegistry } from '../location/LocationInteractionRegistry';
+import {
+    LocationInteractionContext,
+    LocationInteractionRegistry,
+} from '../location/LocationInteractionRegistry';
 
 const { ccclass } = _decorator;
 const HANDLER_ID = 'stone-base-restoration';
 
-/** A non-modal, same-viewpoint restoration lens for Location 2's stone bases. */
+/** Non-modal, same-viewpoint restoration lens for Location 2's stone bases. */
 @ccclass('StoneBaseRestorationViewer')
 export class StoneBaseRestorationViewer extends Component {
     private root!: Node;
     private lens!: Node;
+    private lensMask!: Node;
+    private historicalImage!: Node;
+    private rim!: Graphics;
+    private stencil!: Graphics;
     private closeButton!: Node;
     private notice!: Label;
     private frame: SpriteFrame | null = null;
+    private loadFailed = false;
     private dragging = false;
+    private expanded = false;
     private home = new Vec2();
+    private collapsedRadius = 34;
+    private expandedRadius = 116;
+    private lastVisibleWidth = -1;
+    private lastVisibleHeight = -1;
 
     onLoad(): void {
         LocationInteractionRegistry.register(HANDLER_ID, this.openFromInteraction);
         resources.load('restoration/location-2-stone-base/spriteFrame', SpriteFrame, (error, frame) => {
-            if (error || !frame) return;
-            this.frame = frame;
+            this.loadFailed = Boolean(error || !frame);
+            this.frame = frame ?? null;
+            if (this.root?.active) this.updateNotice();
         });
     }
 
@@ -37,18 +64,24 @@ export class StoneBaseRestorationViewer extends Component {
 
     open(): void {
         this.ensureUi();
+        this.dragging = false;
+        this.expanded = false;
         this.root.active = true;
+        this.lastVisibleWidth = -1;
         this.layout();
-        this.notice.string = this.frame ? '拖动放大镜查看复原柱网' : '复原图暂不可用，可关闭后继续探索';
+        this.updateNotice();
     }
 
     hide(): void {
-        if (this.root) this.root.active = false;
         this.dragging = false;
+        this.expanded = false;
+        if (this.root) this.root.active = false;
     }
 
     update(): void {
-        if (this.root?.active) this.layout();
+        if (!this.root?.active) return;
+        this.layout();
+        if (this.expanded) this.alignHistoricalImage();
     }
 
     private ensureUi(): void {
@@ -57,47 +90,59 @@ export class StoneBaseRestorationViewer extends Component {
         this.root.layer = Layers.Enum.UI_2D;
         this.root.addComponent(UITransform);
         this.node.addChild(this.root);
-        // Sit above the photo world but below the existing HUD/joystick/action buttons.
+        // Keep the photo world below and the existing HUD/action controls above.
         this.root.setSiblingIndex(1);
 
         const hint = new Node('RestorationHint');
         hint.layer = Layers.Enum.UI_2D;
-        hint.addComponent(UITransform).setContentSize(280, 34);
+        hint.addComponent(UITransform).setContentSize(360, 36);
         this.notice = hint.addComponent(Label);
         this.notice.fontSize = 18;
         this.notice.lineHeight = 24;
         this.notice.color = new Color(255, 247, 215, 255);
         this.notice.enableOutline = true;
-        this.notice.outlineColor = new Color(42, 34, 24, 220);
+        this.notice.outlineColor = new Color(42, 34, 24, 225);
         this.notice.outlineWidth = 3;
         this.root.addChild(hint);
 
         this.lens = new Node('RestorationMagnifier');
         this.lens.layer = Layers.Enum.UI_2D;
-        this.lens.addComponent(UITransform).setContentSize(220, 220);
-        const rim = this.lens.addComponent(Graphics);
-        rim.fillColor = new Color(92, 67, 38, 205);
-        rim.strokeColor = new Color(239, 211, 149, 255);
-        rim.lineWidth = 9;
-        rim.circle(0, 0, 108);
-        rim.fill();
-        rim.stroke();
-        const mask = this.lens.addComponent(Mask);
-        mask.type = Mask.Type.GRAPHICS_STENCIL;
-        const restoration = new Node('HistoricalImage');
-        restoration.layer = Layers.Enum.UI_2D;
-        restoration.addComponent(UITransform);
-        const sprite = restoration.addComponent(Sprite);
-        sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-        this.lens.addChild(restoration);
+        this.lens.addComponent(UITransform);
         this.root.addChild(this.lens);
+
+        this.lensMask = new Node('CircularViewport');
+        this.lensMask.layer = Layers.Enum.UI_2D;
+        this.lensMask.addComponent(UITransform);
+        this.stencil = this.lensMask.addComponent(Graphics);
+        const mask = this.lensMask.addComponent(Mask);
+        mask.type = Mask.Type.GRAPHICS_STENCIL;
+        this.lens.addChild(this.lensMask);
+
+        this.historicalImage = new Node('HistoricalImage');
+        this.historicalImage.layer = Layers.Enum.UI_2D;
+        this.historicalImage.addComponent(UITransform);
+        const sprite = this.historicalImage.addComponent(Sprite);
+        sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        this.lensMask.addChild(this.historicalImage);
+
+        const rimNode = new Node('BrassRim');
+        rimNode.layer = Layers.Enum.UI_2D;
+        rimNode.addComponent(UITransform);
+        this.rim = rimNode.addComponent(Graphics);
+        this.lens.addChild(rimNode);
+
         this.lens.on(Node.EventType.TOUCH_START, this.onLensStart, this);
         this.lens.on(Node.EventType.TOUCH_MOVE, this.onLensMove, this);
         this.lens.on(Node.EventType.TOUCH_END, this.onLensEnd, this);
         this.lens.on(Node.EventType.TOUCH_CANCEL, this.onLensEnd, this);
 
-        this.closeButton = this.createButton('CloseRestorationViewer', '×', 48, new Color(90, 54, 42, 235));
-        this.closeButton.on(Node.EventType.TOUCH_END, this.hide, this);
+        this.closeButton = this.createButton(
+            'CloseRestorationViewer',
+            '×',
+            48,
+            new Color(90, 54, 42, 235),
+        );
+        this.closeButton.on(Node.EventType.TOUCH_END, this.onClose, this);
         this.root.addChild(this.closeButton);
         this.root.active = false;
     }
@@ -113,6 +158,7 @@ export class StoneBaseRestorationViewer extends Component {
         graphics.circle(0, 0, size * 0.5);
         graphics.fill();
         graphics.stroke();
+
         const labelNode = new Node('Text');
         labelNode.layer = Layers.Enum.UI_2D;
         labelNode.addComponent(UITransform).setContentSize(size, size);
@@ -129,33 +175,141 @@ export class StoneBaseRestorationViewer extends Component {
 
     private layout(): void {
         const visible = view.getVisibleSize();
+        const sizeChanged = visible.width !== this.lastVisibleWidth
+            || visible.height !== this.lastVisibleHeight;
+        if (!sizeChanged) return;
+
+        this.lastVisibleWidth = visible.width;
+        this.lastVisibleHeight = visible.height;
         this.root.getComponent(UITransform)!.setContentSize(visible);
-        const radius = Math.max(82, Math.min(126, visible.height * 0.17));
-        this.lens.getComponent(UITransform)!.setContentSize(radius * 2, radius * 2);
-        const graphics = this.lens.getComponent(Graphics)!;
-        graphics.clear();
-        graphics.fillColor = new Color(92, 67, 38, 205);
-        graphics.strokeColor = new Color(239, 211, 149, 255);
-        graphics.lineWidth = Math.max(6, radius * 0.075);
-        graphics.circle(0, 0, radius);
-        graphics.fill();
-        graphics.stroke();
-        this.home.set(visible.width * 0.5 - radius - 38, 8);
+        this.collapsedRadius = Math.max(28, Math.min(38, visible.height * 0.052));
+        this.expandedRadius = Math.max(88, Math.min(126, visible.height * 0.17));
+        this.home.set(
+            visible.width * 0.5 - this.collapsedRadius - 28,
+            Math.min(54, visible.height * 0.08),
+        );
         if (!this.dragging) this.lens.setPosition(this.home.x, this.home.y, 0);
-        const image = this.lens.getChildByName('HistoricalImage')!;
-        image.getComponent(UITransform)!.setContentSize(visible);
-        image.setPosition(-this.lens.position.x, -this.lens.position.y, 0);
-        image.getComponent(Sprite)!.spriteFrame = this.frame;
-        this.closeButton.setPosition(visible.width * 0.5 - 42, visible.height * 0.5 - 42, 0);
-        this.root.getChildByName('RestorationHint')!.setPosition(0, visible.height * 0.5 - 42, 0);
+        this.closeButton.setPosition(
+            visible.width * 0.5 - 42,
+            Math.min(visible.height * 0.5 - 54, this.home.y + 94),
+            0,
+        );
+        this.root.getChildByName('RestorationHint')!.setPosition(
+            0,
+            visible.height * 0.5 - 42,
+            0,
+        );
+        this.redrawLens();
     }
 
-    private onLensStart(event: EventTouch): void { this.dragging = true; this.moveLens(event); }
-    private onLensMove(event: EventTouch): void { if (this.dragging) this.moveLens(event); }
-    private onLensEnd(): void { this.dragging = false; this.lens.setPosition(this.home.x, this.home.y, 0); }
+    private redrawLens(): void {
+        const radius = this.expanded ? this.expandedRadius : this.collapsedRadius;
+        const touchExtent = this.expanded ? radius * 2 + 28 : radius * 2.6;
+        this.lens.getComponent(UITransform)!.setContentSize(touchExtent, touchExtent);
+
+        this.rim.clear();
+        this.rim.lineWidth = this.expanded ? Math.max(7, radius * 0.075) : 6;
+        this.rim.strokeColor = new Color(242, 211, 142, 255);
+        this.rim.fillColor = this.expanded
+            ? new Color(55, 42, 28, 45)
+            : new Color(93, 66, 37, 235);
+        this.rim.circle(0, 0, radius);
+        this.rim.fill();
+        this.rim.stroke();
+        this.rim.lineCap = Graphics.LineCap.ROUND;
+        this.rim.moveTo(radius * 0.68, -radius * 0.68);
+        this.rim.lineTo(radius * 1.08, -radius * 1.08);
+        this.rim.stroke();
+
+        if (!this.expanded) {
+            this.rim.fillColor = new Color(169, 205, 205, 105);
+            this.rim.circle(0, 0, radius * 0.62);
+            this.rim.fill();
+        }
+
+        this.lensMask.active = this.expanded;
+        if (!this.expanded) return;
+        this.lensMask.getComponent(UITransform)!.setContentSize(radius * 2, radius * 2);
+        this.stencil.clear();
+        this.stencil.fillColor = Color.WHITE;
+        this.stencil.circle(0, 0, radius - this.rim.lineWidth * 0.55);
+        this.stencil.fill();
+        this.alignHistoricalImage();
+    }
+
+    private alignHistoricalImage(): void {
+        if (!this.expanded || !this.historicalImage?.isValid) return;
+        const sprite = this.historicalImage.getComponent(Sprite)!;
+        sprite.spriteFrame = this.frame;
+
+        const world = this.node.getChildByName('PerspectiveWorld');
+        const worldTransform = world?.getComponent(UITransform);
+        const visible = view.getVisibleSize();
+        const contentSize = worldTransform?.contentSize ?? visible;
+        this.historicalImage.getComponent(UITransform)!.setContentSize(contentSize);
+
+        if (world) {
+            this.historicalImage.setScale(world.scale.x, world.scale.y, 1);
+            this.historicalImage.setPosition(
+                world.position.x - this.lens.position.x,
+                world.position.y - this.lens.position.y,
+                0,
+            );
+        } else {
+            this.historicalImage.setScale(1, 1, 1);
+            this.historicalImage.setPosition(-this.lens.position.x, -this.lens.position.y, 0);
+        }
+    }
+
+    private updateNotice(): void {
+        if (!this.notice) return;
+        this.notice.string = this.loadFailed
+            ? '复原图暂不可用，可关闭后继续探索'
+            : '按住右侧放大镜并拖动查看，松手自动归位';
+    }
+
+    private onClose(event: EventTouch): void {
+        event.propagationStopped = true;
+        this.hide();
+    }
+
+    private onLensStart(event: EventTouch): void {
+        event.propagationStopped = true;
+        this.dragging = true;
+        this.expanded = true;
+        this.redrawLens();
+        this.moveLens(event);
+    }
+
+    private onLensMove(event: EventTouch): void {
+        event.propagationStopped = true;
+        if (this.dragging) this.moveLens(event);
+    }
+
+    private onLensEnd(event: EventTouch): void {
+        event.propagationStopped = true;
+        this.dragging = false;
+        this.expanded = false;
+        this.lens.setPosition(this.home.x, this.home.y, 0);
+        this.redrawLens();
+    }
+
     private moveLens(event: EventTouch): void {
         const point = event.getUILocation();
         const visible = view.getVisibleSize();
-        this.lens.setPosition(point.x - visible.width * 0.5, point.y - visible.height * 0.5, 0);
+        const radius = this.expandedRadius;
+        const margin = 14;
+        const desiredX = point.x - visible.width * 0.5;
+        const desiredY = point.y - visible.height * 0.5;
+        const x = Math.max(
+            -visible.width * 0.5 + radius + margin,
+            Math.min(visible.width * 0.5 - radius - margin, desiredX),
+        );
+        const y = Math.max(
+            -visible.height * 0.5 + radius + margin,
+            Math.min(visible.height * 0.5 - radius - margin, desiredY),
+        );
+        this.lens.setPosition(x, y, 0);
+        this.alignHistoricalImage();
     }
 }
