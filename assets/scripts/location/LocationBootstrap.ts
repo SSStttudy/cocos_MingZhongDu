@@ -208,6 +208,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.createActionButtons();
         this.tourGuide = this.node.addComponent(LocationTourGuide);
         this.tourGuide.initialize(this);
+        this.node.on('location-info-closed', this.onLocationInfoClosed, this);
         this.bindInput();
         this.layoutUi();
     }
@@ -217,6 +218,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.speedTouchId = null;
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
+        this.node.off('location-info-closed', this.onLocationInfoClosed, this);
     }
 
     update(deltaTime: number): void {
@@ -545,7 +547,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.actionButtons.addComponent(UITransform).setContentSize(270, 190);
         this.node.addChild(this.actionButtons);
 
-        this.interactionButton = this.createRoundActionButton('InteractionButton', '交互', 112);
+        this.interactionButton = this.createRoundActionButton('InteractionButton', '查看\n(F)', 112);
         this.interactionButton.setPosition(58, -34, 0);
         this.interactionButton.on(Node.EventType.TOUCH_END, this.onInteractionButton, this);
         this.actionButtons.addChild(this.interactionButton);
@@ -596,8 +598,14 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private activateInteraction(): void {
-        if (this.tourGuide?.activateCurrentTarget()) return;
-        this.activateNearbyInteraction();
+        if (this.activateNearbyInteraction()) return;
+        this.tourGuide?.activateCurrentTarget();
+    }
+
+    private onLocationInfoClosed(): void {
+        // Guided-tour interaction steps are completed after the visitor has
+        // actually read and closed the richer location card.
+        this.tourGuide?.activateCurrentTarget();
     }
 
     private onSpeedStart(event: EventTouch): void {
@@ -623,7 +631,11 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
     private onKeyDown(event: EventKeyboard): void {
         if (event.keyCode === KeyCode.KEY_R) this.toggleRestoredMode();
-        if (event.keyCode === KeyCode.KEY_E || event.keyCode === KeyCode.SPACE) {
+        if (
+            event.keyCode === KeyCode.KEY_F
+            || event.keyCode === KeyCode.KEY_E
+            || event.keyCode === KeyCode.SPACE
+        ) {
             this.activateInteraction();
         }
         this.pressedKeys.add(event.keyCode);
@@ -943,13 +955,14 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.activeInteractionIds = nextActive;
     }
 
-    private activateNearbyInteraction(): void {
+    private activateNearbyInteraction(): boolean {
         const regions = this.interactionRegions.get(this.currentSceneId) ?? [];
         const region = regions.find((item) => this.pointInPolygon(this.playerPosition, item.points));
-        if (!region) return;
+        if (!region) return false;
         const context = this.getInteractionContext(region);
-        LocationInteractionRegistry.activate(context);
+        const activated = LocationInteractionRegistry.activate(context);
         this.node.emit('location-interaction-activate', context);
+        return activated;
     }
 
     private checkTransitions(): void {

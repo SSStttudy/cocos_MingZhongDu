@@ -372,6 +372,38 @@
               "y": 1.000709
             }
           ]
+        },
+        {
+          "id": "interaction-stone-base",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 10,
+          "handlerId": "location-info",
+          "prompt": "查看蟠龙石础",
+          "triggerMode": "button",
+          "payload": "{\"kicker\":\"明中都宫殿建筑遗存\",\"title\":\"蟠龙石础\",\"body\":\"据遗址现场说明，明中都宫殿区已发现4件大型蟠龙石础。石础边长约2.7米、高约1.6米，中心以三条高浮雕蟠龙围成柱槽，外径约1.9米。它们既承担巨型木柱，也以龙纹和祥云标示皇家建筑等级。照片记录了石础、现场说明牌以及三下乡团队的实地考察。\",\"images\":[{\"path\":\"interactions/stone-base/fieldwork\",\"caption\":\"三下乡团队在蟠龙石础遗址开展实地考察\"},{\"path\":\"interactions/stone-base/closeup\",\"caption\":\"蟠龙石础近景，可见中央柱槽与高浮雕纹饰\"},{\"path\":\"interactions/stone-base/info-sign\",\"caption\":\"遗址现场的蟠龙石础说明牌\"}]}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.57,
+              "y": 0.6
+            },
+            {
+              "x": 0.7,
+              "y": 0.62
+            },
+            {
+              "x": 0.74,
+              "y": 0.74
+            },
+            {
+              "x": 0.62,
+              "y": 0.75
+            }
+          ]
         }
       ],
       "perspective": {
@@ -939,8 +971,14 @@
           "enabled": true,
           "foregroundAsset": "5-plants-steps-foreground",
           "points": [
-            { "x": -0.05, "y": 0.802734 },
-            { "x": 1.05, "y": 0.802734 }
+            {
+              "x": -0.05,
+              "y": 0.802734
+            },
+            {
+              "x": 1.05,
+              "y": 0.802734
+            }
           ]
         }
       ],
@@ -1140,7 +1178,7 @@
               "y": 0.455038
             },
             {
-              "x": 0.000061,
+              "x": 6.1e-05,
               "y": 0.671917
             }
           ]
