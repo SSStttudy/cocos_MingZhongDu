@@ -549,6 +549,38 @@
               "y": 0.707521
             }
           ]
+        },
+        {
+          "id": "interaction-wumen-xumizuo",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 10,
+          "handlerId": "location-info",
+          "prompt": "查看午门须弥座",
+          "triggerMode": "button",
+          "payload": "{\"kicker\":\"午门营造细节\",\"title\":\"午门须弥座雕刻\",\"body\":\"午门城台外包巨型砖石，白石须弥座以卷草、云纹等连续纹样装饰。近距离观察接缝、磨损与修补痕迹，可以辨认不同阶段的营造和保护信息。这里的纹饰既是结构收边，也强调了宫城正门的礼制等级。\",\"images\":[{\"path\":\"interactions/wumen/passage-side\",\"caption\":\"午门侧墙、门洞与须弥座的整体关系\"},{\"path\":\"interactions/wumen/xumizuo-dragon-cloud\",\"caption\":\"须弥座石刻近景之一\"},{\"path\":\"interactions/wumen/xumizuo-lotus-scroll\",\"caption\":\"须弥座连续纹饰与石材接缝\"}]}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.64,
+              "y": 0.63
+            },
+            {
+              "x": 0.73,
+              "y": 0.64
+            },
+            {
+              "x": 0.74,
+              "y": 0.7
+            },
+            {
+              "x": 0.65,
+              "y": 0.72
+            }
+          ]
         }
       ],
       "occlusionLines": [
@@ -557,8 +589,14 @@
           "enabled": true,
           "foregroundAsset": "3-gate-foreground",
           "points": [
-            { "x": -0.05, "y": 0.714844 },
-            { "x": 1.05, "y": 0.714844 }
+            {
+              "x": -0.05,
+              "y": 0.714844
+            },
+            {
+              "x": 1.05,
+              "y": 0.714844
+            }
           ]
         }
       ],
@@ -749,8 +787,14 @@
           "enabled": true,
           "foregroundAsset": "4-gate-foreground",
           "points": [
-            { "x": -0.05, "y": 0.78 },
-            { "x": 1.05, "y": 0.78 }
+            {
+              "x": -0.05,
+              "y": 0.78
+            },
+            {
+              "x": 1.05,
+              "y": 0.78
+            }
           ]
         }
       ],
@@ -1005,6 +1049,38 @@
               "y": 0.728121
             }
           ]
+        },
+        {
+          "id": "interaction-wumen-passage",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 10,
+          "handlerId": "location-info",
+          "prompt": "查看午门门洞",
+          "triggerMode": "button",
+          "payload": "{\"kicker\":\"皇城南正门\",\"title\":\"午门门洞\",\"body\":\"午门是明中都皇城南正门。现存高大城台、砖拱门洞和两侧须弥座，让人仍能读出宫城中轴入口的尺度。考古工作显示门洞路面曾完成铺装，是判断午门实际营建进度的重要证据。\",\"images\":[{\"path\":\"interactions/wumen/front-gates\",\"caption\":\"午门城台与三座门洞的正面视角\"},{\"path\":\"interactions/wumen/passage-side\",\"caption\":\"沿午门城墙观察砖拱门洞\"},{\"path\":\"interactions/wumen/restoration-model\",\"caption\":\"博物馆中的午门设计复原模型\"}]}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.48,
+              "y": 0.67
+            },
+            {
+              "x": 0.58,
+              "y": 0.68
+            },
+            {
+              "x": 0.57,
+              "y": 0.76
+            },
+            {
+              "x": 0.49,
+              "y": 0.77
+            }
+          ]
         }
       ],
       "occlusionLines": [
@@ -1013,8 +1089,14 @@
           "enabled": true,
           "foregroundAsset": "5-gate-left-foreground",
           "points": [
-            { "x": -0.05, "y": 0.80 },
-            { "x": 0.425781, "y": 0.80 }
+            {
+              "x": -0.05,
+              "y": 0.8
+            },
+            {
+              "x": 0.425781,
+              "y": 0.8
+            }
           ]
         },
         {
@@ -1022,8 +1104,14 @@
           "enabled": true,
           "foregroundAsset": "5-gate-right-foreground",
           "points": [
-            { "x": 0.425781, "y": 0.80 },
-            { "x": 1.05, "y": 0.80 }
+            {
+              "x": 0.425781,
+              "y": 0.8
+            },
+            {
+              "x": 1.05,
+              "y": 0.8
+            }
           ]
         }
       ],
@@ -1529,7 +1617,7 @@
               "y": 0.534996
             },
             {
-              "x": 0.000086,
+              "x": 8.6e-05,
               "y": 0.53258
             }
           ]
@@ -1627,6 +1715,38 @@
             {
               "x": 0.000705,
               "y": 0.594095
+            }
+          ]
+        },
+        {
+          "id": "interaction-wumen-platform",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 10,
+          "handlerId": "location-info",
+          "prompt": "查看午门城台",
+          "triggerMode": "button",
+          "payload": "{\"kicker\":\"中轴与空间观察\",\"title\":\"午门城台视野\",\"body\":\"登上午门城台，中轴线、宫城内外空间和远处地貌同时展开。今天的栏杆属于遗址保护设施；结合现场照片与博物馆复原模型，可以对照观察城台、门楼和宫城轴线原本可能形成的整体关系。\",\"images\":[{\"path\":\"interactions/wumen/platform-view\",\"caption\":\"午门城台顶部现状与保护栏杆\"},{\"path\":\"interactions/wumen/landscape-view\",\"caption\":\"从城台远眺明中都遗址周边地貌\"},{\"path\":\"interactions/wumen/restoration-model\",\"caption\":\"午门复原模型提供的建筑形态参照\"}]}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.38,
+              "y": 0.83
+            },
+            {
+              "x": 0.48,
+              "y": 0.83
+            },
+            {
+              "x": 0.5,
+              "y": 0.92
+            },
+            {
+              "x": 0.39,
+              "y": 0.94
             }
           ]
         }
