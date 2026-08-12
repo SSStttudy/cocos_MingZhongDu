@@ -209,6 +209,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.createJoystick();
         this.createActionButtons();
         this.restorationViewer = this.node.addComponent(StoneBaseRestorationViewer);
+        this.restorationViewer.setScene(this.locationId, this.currentSceneId);
         this.tourGuide = this.node.addComponent(LocationTourGuide);
         this.tourGuide.initialize(this);
         this.bindInput();
@@ -266,8 +267,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private renderRuntimeScene(sceneId: string, spawn?: Vec2): void {
-        this.restorationViewer?.hide();
         this.currentSceneId = sceneId;
+        this.restorationViewer?.setScene(this.locationId, sceneId);
         this.sceneConfig = this.config.scenes[sceneId];
         this.capturePlayerPerspectiveCalibration();
         this.cameraZoom = this.getTargetCameraZoom();

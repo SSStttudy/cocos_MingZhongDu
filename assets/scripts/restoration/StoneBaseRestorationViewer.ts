@@ -4,173 +4,110 @@ import {
     Component,
     EventTouch,
     Graphics,
-    Label,
     Layers,
     Mask,
     Node,
-    resources,
     Sprite,
-    SpriteFrame,
     UITransform,
     Vec2,
     view,
 } from 'cc';
-import {
-    LocationInteractionContext,
-    LocationInteractionRegistry,
-} from '../location/LocationInteractionRegistry';
 
 const { ccclass } = _decorator;
-const HANDLER_ID = 'stone-base-restoration';
+const MAGNIFICATION = 1.65;
 
-/** Non-modal, same-viewpoint restoration lens for Location 2's stone bases. */
+/** A persistent optical magnifier for Location 2, scene 2. */
 @ccclass('StoneBaseRestorationViewer')
 export class StoneBaseRestorationViewer extends Component {
     private root!: Node;
     private lens!: Node;
-    private lensMask!: Node;
-    private historicalImage!: Node;
+    private viewport!: Node;
+    private magnifiedImage!: Node;
+    private handle!: Node;
     private rim!: Graphics;
     private stencil!: Graphics;
-    private closeButton!: Node;
-    private notice!: Label;
-    private frame: SpriteFrame | null = null;
-    private loadFailed = false;
     private dragging = false;
-    private expanded = false;
+    private dragStartTouch = new Vec2();
+    private dragStartLens = new Vec2();
     private home = new Vec2();
-    private collapsedRadius = 34;
-    private expandedRadius = 116;
+    private radius = 112;
+    private handleLength = 92;
+    private handleSignX = 1;
+    private handleSignY = -1;
     private lastVisibleWidth = -1;
     private lastVisibleHeight = -1;
 
     onLoad(): void {
-        LocationInteractionRegistry.register(HANDLER_ID, this.openFromInteraction);
-        resources.load('restoration/location-2-stone-base/spriteFrame', SpriteFrame, (error, frame) => {
-            this.loadFailed = Boolean(error || !frame);
-            this.frame = frame ?? null;
-            if (this.root?.active) this.updateNotice();
-        });
+        this.ensureUi();
+        this.root.active = false;
     }
 
-    onDestroy(): void {
-        LocationInteractionRegistry.unregister(HANDLER_ID);
-    }
-
-    private openFromInteraction = (context: LocationInteractionContext): void => {
-        if (context.locationId !== 'location-2' || context.sceneId !== '2') return;
-        this.open();
-    };
-
-    open(): void {
+    /** Called by LocationBootstrap whenever its internal photo scene changes. */
+    setScene(locationId: string, sceneId: string): void {
         this.ensureUi();
         this.dragging = false;
-        this.expanded = false;
-        this.root.active = true;
+        this.root.active = locationId === 'location-2' && sceneId === '2';
+        if (!this.root.active) return;
         this.lastVisibleWidth = -1;
         this.layout();
-        this.updateNotice();
+        this.alignMagnifiedImage();
     }
 
     hide(): void {
         this.dragging = false;
-        this.expanded = false;
         if (this.root) this.root.active = false;
     }
 
     update(): void {
         if (!this.root?.active) return;
         this.layout();
-        if (this.expanded) this.alignHistoricalImage();
+        this.alignMagnifiedImage();
     }
 
     private ensureUi(): void {
         if (this.root) return;
-        this.root = new Node('StoneBaseRestorationViewer');
+        this.root = new Node('StoneBaseMagnifier');
         this.root.layer = Layers.Enum.UI_2D;
         this.root.addComponent(UITransform);
         this.node.addChild(this.root);
-        // Keep the photo world below and the existing HUD/action controls above.
+        // Above the photo world, below joystick and action controls.
         this.root.setSiblingIndex(1);
 
-        const hint = new Node('RestorationHint');
-        hint.layer = Layers.Enum.UI_2D;
-        hint.addComponent(UITransform).setContentSize(360, 36);
-        this.notice = hint.addComponent(Label);
-        this.notice.fontSize = 18;
-        this.notice.lineHeight = 24;
-        this.notice.color = new Color(255, 247, 215, 255);
-        this.notice.enableOutline = true;
-        this.notice.outlineColor = new Color(42, 34, 24, 225);
-        this.notice.outlineWidth = 3;
-        this.root.addChild(hint);
-
-        this.lens = new Node('RestorationMagnifier');
+        this.lens = new Node('Lens');
         this.lens.layer = Layers.Enum.UI_2D;
         this.lens.addComponent(UITransform);
         this.root.addChild(this.lens);
 
-        this.lensMask = new Node('CircularViewport');
-        this.lensMask.layer = Layers.Enum.UI_2D;
-        this.lensMask.addComponent(UITransform);
-        this.stencil = this.lensMask.addComponent(Graphics);
-        const mask = this.lensMask.addComponent(Mask);
+        this.viewport = new Node('CircularViewport');
+        this.viewport.layer = Layers.Enum.UI_2D;
+        this.viewport.addComponent(UITransform);
+        this.stencil = this.viewport.addComponent(Graphics);
+        const mask = this.viewport.addComponent(Mask);
         mask.type = Mask.Type.GRAPHICS_STENCIL;
-        this.lens.addChild(this.lensMask);
+        this.lens.addChild(this.viewport);
 
-        this.historicalImage = new Node('HistoricalImage');
-        this.historicalImage.layer = Layers.Enum.UI_2D;
-        this.historicalImage.addComponent(UITransform);
-        const sprite = this.historicalImage.addComponent(Sprite);
+        this.magnifiedImage = new Node('MagnifiedCurrentPhoto');
+        this.magnifiedImage.layer = Layers.Enum.UI_2D;
+        this.magnifiedImage.addComponent(UITransform);
+        const sprite = this.magnifiedImage.addComponent(Sprite);
         sprite.sizeMode = Sprite.SizeMode.CUSTOM;
-        this.lensMask.addChild(this.historicalImage);
+        this.viewport.addChild(this.magnifiedImage);
 
-        const rimNode = new Node('BrassRim');
-        rimNode.layer = Layers.Enum.UI_2D;
-        rimNode.addComponent(UITransform);
-        this.rim = rimNode.addComponent(Graphics);
-        this.lens.addChild(rimNode);
+        const glass = new Node('GlassAndRim');
+        glass.layer = Layers.Enum.UI_2D;
+        glass.addComponent(UITransform);
+        this.rim = glass.addComponent(Graphics);
+        this.lens.addChild(glass);
 
-        this.lens.on(Node.EventType.TOUCH_START, this.onLensStart, this);
-        this.lens.on(Node.EventType.TOUCH_MOVE, this.onLensMove, this);
-        this.lens.on(Node.EventType.TOUCH_END, this.onLensEnd, this);
-        this.lens.on(Node.EventType.TOUCH_CANCEL, this.onLensEnd, this);
-
-        this.closeButton = this.createButton(
-            'CloseRestorationViewer',
-            '×',
-            48,
-            new Color(90, 54, 42, 235),
-        );
-        this.closeButton.on(Node.EventType.TOUCH_END, this.onClose, this);
-        this.root.addChild(this.closeButton);
-        this.root.active = false;
-    }
-
-    private createButton(name: string, text: string, size: number, color: Color): Node {
-        const button = new Node(name);
-        button.layer = Layers.Enum.UI_2D;
-        button.addComponent(UITransform).setContentSize(size, size);
-        const graphics = button.addComponent(Graphics);
-        graphics.fillColor = color;
-        graphics.strokeColor = new Color(255, 239, 198, 245);
-        graphics.lineWidth = 3;
-        graphics.circle(0, 0, size * 0.5);
-        graphics.fill();
-        graphics.stroke();
-
-        const labelNode = new Node('Text');
-        labelNode.layer = Layers.Enum.UI_2D;
-        labelNode.addComponent(UITransform).setContentSize(size, size);
-        const label = labelNode.addComponent(Label);
-        label.string = text;
-        label.fontSize = 34;
-        label.lineHeight = size;
-        label.horizontalAlign = Label.HorizontalAlign.CENTER;
-        label.verticalAlign = Label.VerticalAlign.CENTER;
-        label.color = new Color(255, 248, 220, 255);
-        button.addChild(labelNode);
-        return button;
+        this.handle = new Node('DragHandle');
+        this.handle.layer = Layers.Enum.UI_2D;
+        this.handle.addComponent(UITransform);
+        this.handle.addComponent(Graphics);
+        this.lens.addChild(this.handle);
+        this.handle.on(Node.EventType.TOUCH_START, this.onHandleStart, this);
+        this.handle.on(Node.EventType.TOUCH_MOVE, this.onHandleMove, this);
+        this.handle.on(Node.EventType.TOUCH_END, this.onHandleEnd, this);
+        this.handle.on(Node.EventType.TOUCH_CANCEL, this.onHandleEnd, this);
     }
 
     private layout(): void {
@@ -182,134 +119,158 @@ export class StoneBaseRestorationViewer extends Component {
         this.lastVisibleWidth = visible.width;
         this.lastVisibleHeight = visible.height;
         this.root.getComponent(UITransform)!.setContentSize(visible);
-        this.collapsedRadius = Math.max(28, Math.min(38, visible.height * 0.052));
-        this.expandedRadius = Math.max(88, Math.min(126, visible.height * 0.17));
+        this.radius = Math.max(88, Math.min(124, visible.height * 0.165));
+        this.handleLength = Math.max(76, Math.min(98, this.radius * 0.82));
+
         this.home.set(
-            visible.width * 0.5 - this.collapsedRadius - 28,
-            Math.min(54, visible.height * 0.08),
+            visible.width * 0.5 - this.radius - this.handleLength * 0.48 - 34,
+            46,
         );
         if (!this.dragging) this.lens.setPosition(this.home.x, this.home.y, 0);
-        this.closeButton.setPosition(
-            visible.width * 0.5 - 42,
-            Math.min(visible.height * 0.5 - 54, this.home.y + 94),
-            0,
-        );
-        this.root.getChildByName('RestorationHint')!.setPosition(
-            0,
-            visible.height * 0.5 - 42,
-            0,
-        );
-        this.redrawLens();
+        this.redraw();
     }
 
-    private redrawLens(): void {
-        const radius = this.expanded ? this.expandedRadius : this.collapsedRadius;
-        const touchExtent = this.expanded ? radius * 2 + 28 : radius * 2.6;
-        this.lens.getComponent(UITransform)!.setContentSize(touchExtent, touchExtent);
+    private redraw(): void {
+        const innerRadius = this.radius - 9;
+        this.lens.getComponent(UITransform)!.setContentSize(
+            this.radius * 2 + this.handleLength,
+            this.radius * 2 + this.handleLength,
+        );
+        this.viewport.getComponent(UITransform)!.setContentSize(innerRadius * 2, innerRadius * 2);
 
-        this.rim.clear();
-        this.rim.lineWidth = this.expanded ? Math.max(7, radius * 0.075) : 6;
-        this.rim.strokeColor = new Color(242, 211, 142, 255);
-        this.rim.fillColor = this.expanded
-            ? new Color(55, 42, 28, 45)
-            : new Color(93, 66, 37, 235);
-        this.rim.circle(0, 0, radius);
-        this.rim.fill();
-        this.rim.stroke();
-        this.rim.lineCap = Graphics.LineCap.ROUND;
-        this.rim.moveTo(radius * 0.68, -radius * 0.68);
-        this.rim.lineTo(radius * 1.08, -radius * 1.08);
-        this.rim.stroke();
-
-        if (!this.expanded) {
-            this.rim.fillColor = new Color(169, 205, 205, 105);
-            this.rim.circle(0, 0, radius * 0.62);
-            this.rim.fill();
-        }
-
-        this.lensMask.active = this.expanded;
-        if (!this.expanded) return;
-        this.lensMask.getComponent(UITransform)!.setContentSize(radius * 2, radius * 2);
         this.stencil.clear();
         this.stencil.fillColor = Color.WHITE;
-        this.stencil.circle(0, 0, radius - this.rim.lineWidth * 0.55);
+        this.stencil.circle(0, 0, innerRadius);
         this.stencil.fill();
-        this.alignHistoricalImage();
+
+        this.rim.clear();
+        // Dark outer bevel, warm brass body, then a bright inner highlight.
+        this.rim.lineWidth = 14;
+        this.rim.strokeColor = new Color(54, 37, 22, 245);
+        this.rim.circle(0, 0, this.radius + 1);
+        this.rim.stroke();
+        this.rim.lineWidth = 9;
+        this.rim.strokeColor = new Color(184, 126, 54, 255);
+        this.rim.circle(0, 0, this.radius - 2);
+        this.rim.stroke();
+        this.rim.lineWidth = 2;
+        this.rim.strokeColor = new Color(255, 226, 151, 235);
+        this.rim.circle(-2, 2, this.radius - 8);
+        this.rim.stroke();
+        // A restrained glass reflection; it remains non-interactive.
+        this.rim.lineWidth = 6;
+        this.rim.strokeColor = new Color(225, 248, 247, 82);
+        this.rim.arc(-15, 16, this.radius * 0.68, 1.95, 2.72, false);
+        this.rim.stroke();
+
+        const handleWidth = Math.max(34, this.radius * 0.34);
+        const handleGraphics = this.handle.getComponent(Graphics)!;
+        handleGraphics.clear();
+        handleGraphics.lineWidth = 5;
+        handleGraphics.strokeColor = new Color(58, 38, 22, 255);
+        handleGraphics.fillColor = new Color(108, 61, 31, 255);
+        handleGraphics.roundRect(
+            -handleWidth * 0.5,
+            -this.handleLength * 0.5,
+            handleWidth,
+            this.handleLength,
+            handleWidth * 0.46,
+        );
+        handleGraphics.fill();
+        handleGraphics.stroke();
+        handleGraphics.lineWidth = 3;
+        handleGraphics.strokeColor = new Color(223, 165, 83, 220);
+        handleGraphics.moveTo(-handleWidth * 0.25, -this.handleLength * 0.25);
+        handleGraphics.lineTo(-handleWidth * 0.25, this.handleLength * 0.25);
+        handleGraphics.stroke();
+
+        this.updateHandleOrientation(this.lens.position.x, this.lens.position.y);
+        const handleOffset = this.getHandleOffset();
+        this.handle.setPosition(handleOffset.x, handleOffset.y, 0);
+        // Generous touch box around the handle, never around the glass itself.
+        this.handle.getComponent(UITransform)!.setContentSize(handleWidth + 28, this.handleLength + 28);
+        this.handle.setRotationFromEuler(
+            0,
+            0,
+            Math.atan2(handleOffset.y, handleOffset.x) * 180 / Math.PI - 90,
+        );
     }
 
-    private alignHistoricalImage(): void {
-        if (!this.expanded || !this.historicalImage?.isValid) return;
-        const sprite = this.historicalImage.getComponent(Sprite)!;
-        sprite.spriteFrame = this.frame;
-
+    private alignMagnifiedImage(): void {
         const world = this.node.getChildByName('PerspectiveWorld');
-        const worldTransform = world?.getComponent(UITransform);
-        const visible = view.getVisibleSize();
-        const contentSize = worldTransform?.contentSize ?? visible;
-        this.historicalImage.getComponent(UITransform)!.setContentSize(contentSize);
+        const background = world?.getChildByName('BackgroundCurrent')?.getComponent(Sprite);
+        const target = this.magnifiedImage.getComponent(Sprite)!;
+        target.spriteFrame = background?.spriteFrame ?? null;
+        if (!world || !background?.spriteFrame) return;
 
-        if (world) {
-            this.historicalImage.setScale(world.scale.x, world.scale.y, 1);
-            this.historicalImage.setPosition(
-                world.position.x - this.lens.position.x,
-                world.position.y - this.lens.position.y,
-                0,
-            );
-        } else {
-            this.historicalImage.setScale(1, 1, 1);
-            this.historicalImage.setPosition(-this.lens.position.x, -this.lens.position.y, 0);
-        }
+        const worldSize = world.getComponent(UITransform)?.contentSize ?? view.getVisibleSize();
+        this.magnifiedImage.getComponent(UITransform)!.setContentSize(worldSize);
+        this.magnifiedImage.setScale(
+            world.scale.x * MAGNIFICATION,
+            world.scale.y * MAGNIFICATION,
+            1,
+        );
+        // Keep the pixel beneath the lens centre fixed while magnifying it.
+        this.magnifiedImage.setPosition(
+            (world.position.x - this.lens.position.x) * MAGNIFICATION,
+            (world.position.y - this.lens.position.y) * MAGNIFICATION,
+            0,
+        );
     }
 
-    private updateNotice(): void {
-        if (!this.notice) return;
-        this.notice.string = this.loadFailed
-            ? '复原图暂不可用，可关闭后继续探索'
-            : '按住右侧放大镜并拖动查看，松手自动归位';
+    private getHandleOffset(): Vec2 {
+        const distance = this.radius + this.handleLength * 0.42;
+        return new Vec2(
+            distance * 0.7071 * this.handleSignX,
+            distance * 0.7071 * this.handleSignY,
+        );
     }
 
-    private onClose(event: EventTouch): void {
-        event.propagationStopped = true;
-        this.hide();
+    private updateHandleOrientation(lensX: number, lensY: number): void {
+        // Point the handle toward the screen centre so it remains reachable
+        // while the glass itself travels beyond any edge.
+        this.handleSignX = lensX > 0 ? -1 : 1;
+        this.handleSignY = lensY > 0 ? -1 : 1;
+        const handleOffset = this.getHandleOffset();
+        this.handle.setPosition(handleOffset.x, handleOffset.y, 0);
+        this.handle.setRotationFromEuler(
+            0,
+            0,
+            Math.atan2(handleOffset.y, handleOffset.x) * 180 / Math.PI - 90,
+        );
     }
 
-    private onLensStart(event: EventTouch): void {
+    private onHandleStart(event: EventTouch): void {
         event.propagationStopped = true;
         this.dragging = true;
-        this.expanded = true;
-        this.redrawLens();
-        this.moveLens(event);
+        const point = event.getUILocation();
+        this.dragStartTouch.set(point.x, point.y);
+        this.dragStartLens.set(this.lens.position.x, this.lens.position.y);
     }
 
-    private onLensMove(event: EventTouch): void {
+    private onHandleMove(event: EventTouch): void {
         event.propagationStopped = true;
-        if (this.dragging) this.moveLens(event);
+        if (!this.dragging) return;
+        const point = event.getUILocation();
+        this.moveLensTo(
+            this.dragStartLens.x + point.x - this.dragStartTouch.x,
+            this.dragStartLens.y + point.y - this.dragStartTouch.y,
+        );
     }
 
-    private onLensEnd(event: EventTouch): void {
+    private onHandleEnd(event: EventTouch): void {
         event.propagationStopped = true;
         this.dragging = false;
-        this.expanded = false;
-        this.lens.setPosition(this.home.x, this.home.y, 0);
-        this.redrawLens();
     }
 
-    private moveLens(event: EventTouch): void {
-        const point = event.getUILocation();
+    private moveLensTo(desiredX: number, desiredY: number): void {
         const visible = view.getVisibleSize();
-        const radius = this.expandedRadius;
-        const margin = 14;
-        const desiredX = point.x - visible.width * 0.5;
-        const desiredY = point.y - visible.height * 0.5;
-        const x = Math.max(
-            -visible.width * 0.5 + radius + margin,
-            Math.min(visible.width * 0.5 - radius - margin, desiredX),
-        );
-        const y = Math.max(
-            -visible.height * 0.5 + radius + margin,
-            Math.min(visible.height * 0.5 - radius - margin, desiredY),
-        );
+        // The lens centre reaches every screen corner, allowing roughly half
+        // the glass to travel outside. Its handle automatically flips inward.
+        const x = Math.max(-visible.width * 0.5, Math.min(visible.width * 0.5, desiredX));
+        const y = Math.max(-visible.height * 0.5, Math.min(visible.height * 0.5, desiredY));
         this.lens.setPosition(x, y, 0);
-        this.alignHistoricalImage();
+        this.updateHandleOrientation(x, y);
+        this.alignMagnifiedImage();
     }
 }
