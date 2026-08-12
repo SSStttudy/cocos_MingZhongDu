@@ -43,6 +43,7 @@ import {
 } from '../tour/LocationTourGuide';
 import { TourProgressStore } from '../tour/TourProgressStore';
 import { OcclusionLineShape } from './editor/OcclusionLineShape';
+import { LocationMinimap } from '../minimap/LocationMinimap';
 import { StoneBaseRestorationViewer } from '../restoration/StoneBaseRestorationViewer';
 
 const { ccclass, executeInEditMode, property } = _decorator;
@@ -141,7 +142,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private interactionButton!: Node;
     private speedButton!: Node;
     private titleLabel!: Label;
-    private modeLabel!: Label;
+    private minimap: LocationMinimap | null = null;
     private moveInput = new Vec2();
     private keyboardInput = new Vec2();
     private joystickInput = new Vec2();
@@ -150,7 +151,6 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private speedTouchId: number | null = null;
     private speedBoostHeld = false;
     private transitionCooldown = 0.8;
-    private restoredMode = false;
     private editorSceneId = '';
     private interactionRegions = new Map<string, Array<{
         id: string;
@@ -212,6 +212,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.restorationViewer.setScene(this.locationId, this.currentSceneId);
         this.tourGuide = this.node.addComponent(LocationTourGuide);
         this.tourGuide.initialize(this);
+        this.minimap = this.node.addComponent(LocationMinimap);
+        this.minimap.initialize(this.config, this.currentSceneId, () => TourProgressStore.getCurrentStep());
         this.bindInput();
         this.layoutUi();
     }
@@ -221,6 +223,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.speedTouchId = null;
         input.off(Input.EventType.KEY_DOWN, this.onKeyDown, this);
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
+        this.minimap?.shutdown();
+        this.minimap = null;
     }
 
     update(deltaTime: number): void {
@@ -322,7 +326,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.createForegroundLayers(foreground);
 
         this.updatePlayerVisual();
-        this.updateHud();
+        if (this.titleLabel) this.titleLabel.string = this.sceneConfig.title;
+        this.minimap?.setCurrentScene(sceneId);
     }
 
     private createBackground(parent: Node, name: string, frame: SpriteFrame | null): Node {
@@ -493,27 +498,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.titleLabel.outlineWidth = 4;
         this.node.addChild(titleNode);
 
-        const modeNode = new Node('ImageModeButton');
-        modeNode.layer = Layers.Enum.UI_2D;
-        modeNode.addComponent(UITransform).setContentSize(190, 54);
-        const graphics = modeNode.addComponent(Graphics);
-        graphics.fillColor = new Color(38, 49, 50, 190);
-        graphics.strokeColor = new Color(255, 244, 205, 210);
-        graphics.lineWidth = 3;
-        graphics.roundRect(-95, -27, 190, 54, 14);
-        graphics.fill();
-        graphics.stroke();
-        const modeText = new Node('ModeText');
-        modeText.layer = Layers.Enum.UI_2D;
-        modeText.addComponent(UITransform).setContentSize(180, 44);
-        this.modeLabel = modeText.addComponent(Label);
-        this.modeLabel.fontSize = 20;
-        this.modeLabel.lineHeight = 28;
-        this.modeLabel.color = new Color(255, 247, 215, 255);
-        modeNode.addChild(modeText);
-        modeNode.on(Node.EventType.TOUCH_END, this.toggleRestoredMode, this);
-        this.node.addChild(modeNode);
-        this.updateHud();
+        this.titleLabel.string = this.sceneConfig.title;
     }
 
     private createJoystick(): void {
@@ -627,7 +612,6 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private onKeyDown(event: EventKeyboard): void {
-        if (event.keyCode === KeyCode.KEY_R) this.toggleRestoredMode();
         if (event.keyCode === KeyCode.KEY_E || event.keyCode === KeyCode.SPACE) {
             this.activateInteraction();
         }
@@ -1324,22 +1308,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.world.setPosition(this.cameraPosition.x, this.cameraPosition.y, 0);
     }
 
-    private toggleRestoredMode(): void {
-        if (EDITOR) return;
-        const restored = this.getRestoredSpriteFrame();
-        if (!restored) {
-            this.restoredMode = false;
-            this.updateHud('复原图待制作');
-            return;
-        }
-        this.restoredMode = !this.restoredMode;
-        const sprite = this.world.getChildByName('BackgroundCurrent')?.getComponent(Sprite);
-        if (sprite) sprite.spriteFrame = this.getCurrentSpriteFrame();
-        this.updateHud();
-    }
-
     private getCurrentSpriteFrame(): SpriteFrame | null {
-        if (this.restoredMode) return this.getRestoredSpriteFrame() ?? this.getPresentSpriteFrame();
         return this.getPresentSpriteFrame();
     }
 
@@ -1366,24 +1335,12 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         }
     }
 
-    private getRestoredSpriteFrame(): SpriteFrame | null {
-        if (this.currentSceneId === 'exterior') return this.exteriorRestored;
-        if (this.currentSceneId === 'interior') return this.interiorRestored;
-        return null;
-    }
-
-    private updateHud(message = ''): void {
-        if (!this.titleLabel || !this.modeLabel) return;
-        this.titleLabel.string = this.sceneConfig.title;
-        this.modeLabel.string = message || (this.restoredMode ? '切换：遗址现状' : '切换：历史复原');
-    }
-
     private layoutUi(): void {
         if (!this.joystick) return;
         const visible = view.getVisibleSize();
         this.joystick.setPosition(-visible.width * 0.5 + 112, -visible.height * 0.5 + 112, 0);
         this.actionButtons?.setPosition(visible.width * 0.5 - 164, -visible.height * 0.5 + 122, 0);
         this.node.getChildByName('LocationTitle')?.setPosition(0, visible.height * 0.5 - 44, 0);
-        this.node.getChildByName('ImageModeButton')?.setPosition(visible.width * 0.5 - 125, visible.height * 0.5 - 54, 0);
+        this.minimap?.layout(visible);
     }
 }
