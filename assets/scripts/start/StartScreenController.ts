@@ -8,7 +8,6 @@ import {
     EventTouch,
     Graphics,
     Label,
-    LabelOutline,
     Layers,
     Node,
     resources,
@@ -109,8 +108,9 @@ export class StartScreenController extends Component {
         eyebrow.spacingX = 3;
         const title = this.createLabel('明中都遗址探索', 58, CREAM, this.titleGroup);
         title.isBold = true;
-        title.node.addComponent(LabelOutline).color = new Color(36, 28, 20, 220);
-        title.node.getComponent(LabelOutline)!.width = 3;
+        title.enableOutline = true;
+        title.outlineColor = new Color(36, 28, 20, 220);
+        title.outlineWidth = 3;
         const subtitle = this.createLabel('循现实遗迹，重访大明中都', 20, MUTED_CREAM, this.titleGroup);
         subtitle.node.setPosition(0, -58);
         subtitle.spacingX = 2;

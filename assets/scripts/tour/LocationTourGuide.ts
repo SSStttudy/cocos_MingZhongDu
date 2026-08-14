@@ -48,6 +48,7 @@ export interface LocationTourHost {
 @ccclass('LocationTourGuide')
 export class LocationTourGuide extends Component {
     private host: LocationTourHost | null = null;
+    private eventNode: Node | null = null;
     private overlay: TourGuideOverlay | null = null;
     private marker: Node | null = null;
     private markerGraphics: Graphics | null = null;
@@ -66,6 +67,7 @@ export class LocationTourGuide extends Component {
 
     initialize(host: LocationTourHost): void {
         this.host = host;
+        this.eventNode = host.node;
         this.overlay = new TourGuideOverlay(host.node);
         this.overlay.root.setSiblingIndex(host.node.children.length - 1);
         host.node.on(TOUR_FEATURE_EVENTS.fragmentDiscovered, this.onFragmentDiscovered, this);
@@ -90,10 +92,12 @@ export class LocationTourGuide extends Component {
     }
 
     onDestroy(): void {
-        this.host?.node.off(TOUR_FEATURE_EVENTS.fragmentDiscovered, this.onFragmentDiscovered, this);
-        this.host?.node.off(TOUR_FEATURE_EVENTS.fragmentCollected, this.onFragmentCollected, this);
-        this.host?.node.off(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, this.onFragmentSceneCompleted, this);
-        this.host?.node.off(TOUR_FEATURE_EVENTS.magnifierExpanded, this.onMagnifierExpanded, this);
+        this.eventNode?.off(TOUR_FEATURE_EVENTS.fragmentDiscovered, this.onFragmentDiscovered, this);
+        this.eventNode?.off(TOUR_FEATURE_EVENTS.fragmentCollected, this.onFragmentCollected, this);
+        this.eventNode?.off(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, this.onFragmentSceneCompleted, this);
+        this.eventNode?.off(TOUR_FEATURE_EVENTS.magnifierExpanded, this.onMagnifierExpanded, this);
+        this.eventNode = null;
+        this.host = null;
         this.overlay?.destroy();
         this.overlay = null;
     }
