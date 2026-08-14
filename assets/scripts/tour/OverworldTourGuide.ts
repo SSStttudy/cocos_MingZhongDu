@@ -8,7 +8,7 @@ import {
     UITransform,
     Vec2,
 } from 'cc';
-import { TOUR_STEPS } from './TourConfig';
+import { getTourStepDisplayTitle, TOUR_STEPS } from './TourConfig';
 import { TourGuideOverlay } from './TourGuideOverlay';
 import { TourProgressStore } from './TourProgressStore';
 
@@ -70,7 +70,11 @@ export class OverworldTourGuide extends Component {
         if (discovered) TourProgressStore.markDiscovered(discovered.id);
 
         const current = TourProgressStore.getCurrentStep();
-        if (current?.kind === 'overworld-entrance' && current.entranceId === source.entranceId) {
+        if (
+            current?.kind === 'overworld-entrance'
+            && current.entranceId === source.entranceId
+            && (!current.entryPointId || current.entryPointId === source.id)
+        ) {
             TourProgressStore.markVisited(current.id, current.resumeAfter);
             this.refreshObjective(false);
             this.redrawRouteDots(true);
@@ -90,7 +94,7 @@ export class OverworldTourGuide extends Component {
             );
             return;
         }
-        this.overlay.setObjective(step.title, step.objective);
+        this.overlay.setObjective(getTourStepDisplayTitle(step), step.objective);
         this.overlay.setSpeech(step.speech, initial ? 'welcome' : 'pointing');
     }
 

@@ -10,7 +10,12 @@ import {
 } from 'cc';
 import { TourGuideOverlay } from './TourGuideOverlay';
 import { TourProgressStore } from './TourProgressStore';
-import { TourStep } from './TourConfig';
+import { getTourStepDisplayTitle, TOUR_NARRATION_POINTS, TourStep } from './TourConfig';
+import {
+    TOUR_FEATURE_EVENTS,
+    TourFeatureBridge,
+    TourFragmentEvent,
+} from './TourFeatureBridge';
 
 const { ccclass } = _decorator;
 
@@ -53,21 +58,20 @@ export class LocationTourGuide extends Component {
     private missingWarnings = new Set<string>();
     private lastStepId = '';
     private completing = false;
+    private transientSpeechPriority = 0;
+    private transientSpeechUntil = 0;
+    private transientSpeechKey = '';
+    private lastActionHintStepId = '';
+    private missingPromptedSteps = new Set<string>();
 
     initialize(host: LocationTourHost): void {
         this.host = host;
-        const initialStep = TourProgressStore.getCurrentStep();
-        // Direct scene preview bypasses the overworld entrance. Complete only the
-        // matching arrival step so each location can be tested independently.
-        if (
-            initialStep?.kind === 'overworld-entrance'
-            && initialStep.resumeAfter.kind === 'location'
-            && initialStep.resumeAfter.locationId === host.getTourLocationId()
-        ) {
-            TourProgressStore.markVisited(initialStep.id, initialStep.resumeAfter);
-        }
         this.overlay = new TourGuideOverlay(host.node);
         this.overlay.root.setSiblingIndex(host.node.children.length - 1);
+        host.node.on(TOUR_FEATURE_EVENTS.fragmentDiscovered, this.onFragmentDiscovered, this);
+        host.node.on(TOUR_FEATURE_EVENTS.fragmentCollected, this.onFragmentCollected, this);
+        host.node.on(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, this.onFragmentSceneCompleted, this);
+        host.node.on(TOUR_FEATURE_EVENTS.magnifierExpanded, this.onMagnifierExpanded, this);
         this.refreshObjective(true);
         this.updateTarget();
     }
@@ -80,9 +84,16 @@ export class LocationTourGuide extends Component {
         if (this.elapsed < 0.12) return;
         this.elapsed = 0;
         this.updateTarget();
+        this.updateFragmentHint();
+        this.updateNarrationPoint();
+        this.expireTransientSpeech();
     }
 
     onDestroy(): void {
+        this.host?.node.off(TOUR_FEATURE_EVENTS.fragmentDiscovered, this.onFragmentDiscovered, this);
+        this.host?.node.off(TOUR_FEATURE_EVENTS.fragmentCollected, this.onFragmentCollected, this);
+        this.host?.node.off(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, this.onFragmentSceneCompleted, this);
+        this.host?.node.off(TOUR_FEATURE_EVENTS.magnifierExpanded, this.onMagnifierExpanded, this);
         this.overlay?.destroy();
         this.overlay = null;
     }
@@ -99,6 +110,19 @@ export class LocationTourGuide extends Component {
 
     activateCurrentTarget(): boolean {
         return this.overlay?.triggerContextAction() ?? false;
+    }
+
+    handleLocationInfoClosed(regionId: string): boolean {
+        const step = TourProgressStore.getCurrentStep();
+        if (
+            !step
+            || step.kind !== 'location-region'
+            || step.locationId !== this.host?.getTourLocationId()
+            || step.sceneId !== this.host?.getTourSceneId()
+            || step.regionId !== regionId
+        ) return false;
+        this.completeLookTarget(step, false);
+        return true;
     }
 
     private updateTarget(): void {
@@ -135,12 +159,7 @@ export class LocationTourGuide extends Component {
             }
             const region = this.host.getTourRegion(step.sceneId!, step.regionId!);
             if (!region) {
-                const warningKey = `${step.sceneId}/${step.regionId}`;
-                if (!this.missingWarnings.has(warningKey)) {
-                    this.missingWarnings.add(warningKey);
-                    console.warn(`[TourGuide] 目标区域 ${warningKey} 不存在，已按进入分镜完成。`);
-                }
-                this.completeLookTarget(step);
+                this.handleMissingTarget(step);
                 return;
             }
             this.drawMarker(
@@ -150,6 +169,7 @@ export class LocationTourGuide extends Component {
             if (this.distanceToPolygon(this.host.getTourPlayerPosition(), region.polygon) <= (step.proximity ?? 64)) {
                 if (step.completionMode === 'action' || step.targetKind === 'interaction') {
                     this.overlay.setContextAction('查看', () => this.completeLookTarget(step));
+                    this.showActionHint(step);
                 } else {
                     this.completeLookTarget(step);
                 }
@@ -166,10 +186,12 @@ export class LocationTourGuide extends Component {
         this.clearMarker();
     }
 
-    private completeLookTarget(step: TourStep): void {
+    private completeLookTarget(step: TourStep, showKnowledgeCard = true): void {
         if (!this.host || !this.overlay || this.completing) return;
         this.completing = true;
         TourProgressStore.markVisited(step.id, step.resumeAfter);
+        if (step.tutorialId) TourProgressStore.markTutorialCompleted(step.tutorialId);
+        this.lastActionHintStepId = '';
         this.host.setTourPaused(true);
         this.clearMarker();
         this.overlay.setContextAction('查看', null);
@@ -182,6 +204,13 @@ export class LocationTourGuide extends Component {
             this.refreshObjective(false);
             this.updateTarget();
         };
+        if (!showKnowledgeCard) {
+            this.host.setTourPaused(false);
+            this.completing = false;
+            this.refreshObjective(false);
+            this.updateTarget();
+            return;
+        }
         this.overlay.showCheckpoint(
             step.title,
             step.knowledgeText ?? step.speech,
@@ -204,6 +233,9 @@ export class LocationTourGuide extends Component {
         if (!this.overlay) return;
         const step = TourProgressStore.getCurrentStep();
         this.lastStepId = step?.id ?? '';
+        this.transientSpeechPriority = 0;
+        this.transientSpeechUntil = 0;
+        this.transientSpeechKey = '';
         if (!step) {
             this.overlay.setObjective('主线完成', '可自由游览各处遗址');
             this.overlay.setSpeech(
@@ -212,8 +244,162 @@ export class LocationTourGuide extends Component {
             );
             return;
         }
-        this.overlay.setObjective(step.title, step.objective);
+        this.overlay.setObjective(getTourStepDisplayTitle(step), step.objective);
         this.overlay.setSpeech(step.speech, initial ? 'welcome' : 'pointing');
+    }
+
+    private showActionHint(step: TourStep): void {
+        if (
+            !step.actionHint
+            || !step.tutorialId
+            || TourProgressStore.hasCompletedTutorial(step.tutorialId)
+            || this.lastActionHintStepId === step.id
+        ) return;
+        if (this.showTransientSpeech(`action:${step.id}`, step.actionHint, 30, 5.5)) {
+            this.lastActionHintStepId = step.id;
+        }
+    }
+
+    private updateNarrationPoint(): void {
+        if (!this.host || !this.overlay || this.completing || this.overlay.isCheckpointOpen()) return;
+        const locationId = this.host.getTourLocationId();
+        const sceneId = this.host.getTourSceneId();
+        const current = TourProgressStore.getCurrentStep();
+        const candidates = TOUR_NARRATION_POINTS
+            .filter((point) => (
+                point.locationId === locationId
+                && point.sceneId === sceneId
+                && !TourProgressStore.hasShownNarration(point.id)
+                && !(current?.kind === 'location-region' && current.regionId === point.regionId)
+            ))
+            .sort((a, b) => (b.priority ?? 10) - (a.priority ?? 10));
+        for (const point of candidates) {
+            const region = this.host.getTourRegion(sceneId, point.regionId);
+            if (!region) continue;
+            const distance = this.distanceToPolygon(this.host.getTourPlayerPosition(), region.polygon);
+            if (distance > (point.proximity ?? 88)) continue;
+            if (this.showTransientSpeech(`narration:${point.id}`, point.speech, point.priority ?? 10, 5.5)) {
+                TourProgressStore.markNarrationShown(point.id);
+            }
+            return;
+        }
+    }
+
+    private updateFragmentHint(): void {
+        if (!this.host || !this.overlay || this.completing || this.overlay.isCheckpointOpen()) return;
+        const locationId = this.host.getTourLocationId();
+        const sceneId = this.host.getTourSceneId();
+        const sceneKey = `${locationId}/${sceneId}`;
+        const narrationId = `fragment-hint:${sceneKey}`;
+        if (TourProgressStore.hasShownNarration(narrationId)) return;
+        const progress = TourFeatureBridge.getFragmentProgress(locationId, sceneId);
+        if (!progress || progress.total <= 0 || progress.collected >= progress.total) return;
+        if (this.showTransientSpeech(
+            narrationId,
+            '这个场景似乎藏着一些线索，拖动放大镜仔细找找看。',
+            20,
+            6,
+        )) {
+            TourProgressStore.markNarrationShown(narrationId);
+        }
+    }
+
+    private handleMissingTarget(step: TourStep): void {
+        if (!this.host || !this.overlay || this.missingPromptedSteps.has(step.id)) return;
+        const warningKey = `${step.sceneId}/${step.regionId}`;
+        this.missingPromptedSteps.add(step.id);
+        if (!this.missingWarnings.has(warningKey)) {
+            this.missingWarnings.add(warningKey);
+            console.warn(`[TourGuide] 目标区域 ${warningKey} 不存在，等待玩家确认跳过。`);
+        }
+        this.completing = true;
+        this.host.setTourPaused(true);
+        this.clearMarker();
+        this.overlay.showCheckpoint(
+            '目标暂不可用',
+            '这一处导览标记没有正确载入。为避免流程卡住，可以跳过本目标并继续游览。',
+            () => {
+                if (!this.host) return;
+                TourProgressStore.markVisited(step.id, step.resumeAfter);
+                this.host.setTourPaused(false);
+                this.completing = false;
+                this.refreshObjective(false);
+                this.updateTarget();
+            },
+            '跳过本目标',
+        );
+    }
+
+    private showTransientSpeech(key: string, text: string, priority: number, duration: number): boolean {
+        if (!this.overlay) return false;
+        if (
+            this.markerAnimationTime < this.transientSpeechUntil
+            && this.transientSpeechKey !== key
+            && priority < this.transientSpeechPriority
+        ) return false;
+        if (this.transientSpeechKey === key && this.markerAnimationTime < this.transientSpeechUntil) return true;
+        this.transientSpeechKey = key;
+        this.transientSpeechPriority = priority;
+        this.transientSpeechUntil = this.markerAnimationTime + duration;
+        this.overlay.setSpeech(text, 'pointing');
+        return true;
+    }
+
+    private expireTransientSpeech(): void {
+        if (!this.overlay || !this.transientSpeechKey || this.markerAnimationTime < this.transientSpeechUntil) return;
+        this.transientSpeechKey = '';
+        this.transientSpeechPriority = 0;
+        this.transientSpeechUntil = 0;
+        const step = TourProgressStore.getCurrentStep();
+        if (step) this.overlay.setSpeech(step.speech, 'pointing');
+    }
+
+    private readonly onFragmentDiscovered = (event: TourFragmentEvent): void => {
+        if (!this.matchesCurrentScene(event)) return;
+        const id = `fragment-discovered:${event.locationId}/${event.sceneId}`;
+        if (TourProgressStore.hasShownNarration(id)) return;
+        if (this.showTransientSpeech(id, '这里有些不寻常，试着用放大镜找找看。', 20, 5)) {
+            TourProgressStore.markNarrationShown(id);
+        }
+    };
+
+    private readonly onFragmentCollected = (event: TourFragmentEvent): void => {
+        if (!this.matchesCurrentScene(event)) return;
+        TourProgressStore.markTutorialCompleted('fragment-search');
+        const progress = TourFeatureBridge.getFragmentProgress(event.locationId, event.sceneId);
+        const collected = event.collected ?? progress?.collected;
+        const total = event.total ?? progress?.total;
+        const name = event.fragmentName ? `“${event.fragmentName}”` : '一枚遗迹碎片';
+        const count = Number.isFinite(collected) && Number.isFinite(total) ? ` · ${collected}/${total}` : '';
+        const id = `fragment-collected:${event.fragmentId ?? `${event.locationId}/${event.sceneId}/${collected ?? name}`}`;
+        if (TourProgressStore.hasShownNarration(id)) return;
+        if (this.showTransientSpeech(id, `找到${name}${count}`, 20, 4.5)) {
+            TourProgressStore.markNarrationShown(id);
+        }
+    };
+
+    private readonly onFragmentSceneCompleted = (event: TourFragmentEvent): void => {
+        if (!this.matchesCurrentScene(event)) return;
+        const id = `fragment-complete:${event.locationId}/${event.sceneId}`;
+        if (TourProgressStore.hasShownNarration(id)) return;
+        if (this.showTransientSpeech(id, '这一带的遗迹碎片已经找齐，可以继续游览了。', 20, 5)) {
+            TourProgressStore.markNarrationShown(id);
+        }
+    };
+
+    private readonly onMagnifierExpanded = (event?: { locationId?: string; sceneId?: string }): void => {
+        if (event?.locationId && !this.matchesCurrentScene(event as TourFragmentEvent)) return;
+        if (TourProgressStore.hasCompletedTutorial('magnifier-basic')) return;
+        TourProgressStore.markTutorialCompleted('magnifier-basic');
+        this.showTransientSpeech('magnifier-complete', '就是这样，拖动放大镜，让容易忽略的细节显出来。', 20, 4.5);
+    };
+
+    private matchesCurrentScene(event: TourFragmentEvent): boolean {
+        return Boolean(
+            this.host
+            && event.locationId === this.host.getTourLocationId()
+            && event.sceneId === this.host.getTourSceneId()
+        );
     }
 
     private drawMarker(target: LocationTourTarget | null, approachDistance = 64): void {

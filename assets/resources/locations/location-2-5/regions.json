@@ -358,6 +358,38 @@
           ]
         },
         {
+          "id": "interaction-ancient-well",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 10,
+          "handlerId": "location-info",
+          "prompt": "查看井状遗存",
+          "triggerMode": "button",
+          "payload": "{\"kicker\":\"都城中的日常设施\",\"title\":\"井状遗存\",\"body\":\"井状遗存把宏大的都城叙事拉回日常生活。它提示人们，考古关注的不只是宫殿和城门，也包括供水、排水及日常使用空间。在取得更明确的考古材料前，不对这处遗存的年代、深度和服务对象作确定判断。\",\"images\":[]}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            {
+              "x": 0.34,
+              "y": 0.67
+            },
+            {
+              "x": 0.72,
+              "y": 0.67
+            },
+            {
+              "x": 0.74,
+              "y": 0.79
+            },
+            {
+              "x": 0.32,
+              "y": 0.79
+            }
+          ]
+        },
+        {
           "id": "walk-main",
           "type": 0,
           "typeName": "Walkable",

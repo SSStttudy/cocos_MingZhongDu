@@ -782,6 +782,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     }
 
     private onKeyDown(event: EventKeyboard): void {
+        if (this.pausedByEntrance) return;
         this.pressedKeys.add(event.keyCode);
         this.refreshKeyboardInput();
     }
@@ -1263,6 +1264,8 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     setTourPaused(paused: boolean): void {
         this.pausedByEntrance = paused;
         if (paused) {
+            this.pressedKeys.clear();
+            this.activeTouchId = null;
             this.speedBoostHeld = false;
             this.speedTouchId = null;
             this.speedButton?.setScale(1, 1, 1);

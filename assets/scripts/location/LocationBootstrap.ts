@@ -588,19 +588,20 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private activateInteraction(): void {
+        if (this.tourPaused) return;
         if (this.activateNearbyInteraction()) return;
         this.tourGuide?.activateCurrentTarget();
     }
 
-    private onLocationInfoClosed(): void {
+    private onLocationInfoClosed(context: LocationInteractionContext): void {
         // Guided-tour interaction steps are completed after the visitor has
         // actually read and closed the richer location card.
-        this.tourGuide?.activateCurrentTarget();
+        this.tourGuide?.handleLocationInfoClosed(context.regionId);
     }
 
     private onSpeedStart(event: EventTouch): void {
         event.propagationStopped = true;
-        if (this.speedTouchId !== null) return;
+        if (this.speedTouchId !== null || this.tourPaused) return;
         this.speedTouchId = event.getID();
         this.speedBoostHeld = true;
         this.speedButton.setScale(0.9, 0.9, 1);
@@ -620,6 +621,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private onKeyDown(event: EventKeyboard): void {
+        if (this.tourPaused) return;
         if (
             event.keyCode === KeyCode.KEY_F
             || event.keyCode === KeyCode.KEY_E
@@ -650,7 +652,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private onJoystickStart(event: EventTouch): void {
-        if (this.activeTouchId !== null) return;
+        if (this.activeTouchId !== null || this.tourPaused) return;
         this.activeTouchId = event.getID();
         this.updateJoystick(event);
     }
@@ -955,7 +957,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private checkTransitions(): void {
-        if (this.transitionCooldown > 0) return;
+        if (this.transitionCooldown > 0 || this.tourPaused) return;
         const transition = this.sceneConfig.transitions.find((item) => (
             this.pointInPolygon(this.playerPosition, item.polygon)
         ));
@@ -1149,6 +1151,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     setTourPaused(paused: boolean): void {
         this.tourPaused = paused;
         if (paused) {
+            this.pressedKeys.clear();
+            this.activeTouchId = null;
             this.speedBoostHeld = false;
             this.speedTouchId = null;
             this.speedButton?.setScale(1, 1, 1);

@@ -8,6 +8,8 @@ export type TourProgressV2 = {
     version: 2;
     discoveredStepIds: string[];
     completedStepIds: string[];
+    shownNarrationIds: string[];
+    completedTutorialIds: string[];
     currentStepId: string;
     resumeAnchor: TourResumeAnchor;
     completed: boolean;
@@ -21,6 +23,8 @@ function createDefaultProgress(): TourProgressV2 {
         version: 2,
         discoveredStepIds: [],
         completedStepIds: [],
+        shownNarrationIds: [],
+        completedTutorialIds: [],
         currentStepId: 'visitor-center-enter',
         resumeAnchor: DEFAULT_ANCHOR,
         completed: false,
@@ -37,6 +41,11 @@ function cloneAnchor(anchor: TourResumeAnchor): TourResumeAnchor {
 function validIds(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
     return [...new Set(value.filter((id): id is string => typeof id === 'string' && getTourStep(id) !== null))];
+}
+
+function validStringIds(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.filter((id): id is string => typeof id === 'string' && id.length > 0))];
 }
 
 function normalizeAnchor(value: unknown): TourResumeAnchor {
@@ -72,6 +81,8 @@ function migrateLegacy(value: unknown): TourProgressV2 {
         version: 2,
         discoveredStepIds: [...completed],
         completedStepIds: completed,
+        shownNarrationIds: [],
+        completedTutorialIds: [],
         currentStepId: next?.id ?? '',
         resumeAnchor: normalizeAnchor(raw.resumeAnchor),
         completed: next === null,
@@ -90,6 +101,8 @@ function normalize(value: unknown): TourProgressV2 {
         version: 2,
         discoveredStepIds: discovered,
         completedStepIds: completed,
+        shownNarrationIds: validStringIds(raw.shownNarrationIds),
+        completedTutorialIds: validStringIds(raw.completedTutorialIds),
         currentStepId: next?.id ?? '',
         resumeAnchor: cloneAnchor(normalizeAnchor(raw.resumeAnchor)),
         completed: next === null,
@@ -134,6 +147,32 @@ export class TourProgressStore {
 
     static isVisited(stepId: string): boolean {
         return this.load().completedStepIds.indexOf(stepId) >= 0;
+    }
+
+    static hasShownNarration(narrationId: string): boolean {
+        return this.load().shownNarrationIds.indexOf(narrationId) >= 0;
+    }
+
+    static markNarrationShown(narrationId: string): TourProgressV2 {
+        const progress = this.load();
+        if (narrationId && progress.shownNarrationIds.indexOf(narrationId) < 0) {
+            progress.shownNarrationIds.push(narrationId);
+            progress.updatedAt = Date.now();
+        }
+        return this.save(progress);
+    }
+
+    static hasCompletedTutorial(tutorialId: string): boolean {
+        return this.load().completedTutorialIds.indexOf(tutorialId) >= 0;
+    }
+
+    static markTutorialCompleted(tutorialId: string): TourProgressV2 {
+        const progress = this.load();
+        if (tutorialId && progress.completedTutorialIds.indexOf(tutorialId) < 0) {
+            progress.completedTutorialIds.push(tutorialId);
+            progress.updatedAt = Date.now();
+        }
+        return this.save(progress);
     }
 
     static markDiscovered(stepId: string): TourProgressV2 {
@@ -196,6 +235,8 @@ export class TourProgressStore {
             ...progress,
             discoveredStepIds: [...progress.discoveredStepIds],
             completedStepIds: [...progress.completedStepIds],
+            shownNarrationIds: [...progress.shownNarrationIds],
+            completedTutorialIds: [...progress.completedTutorialIds],
             resumeAnchor: cloneAnchor(progress.resumeAnchor),
         };
     }

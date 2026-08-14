@@ -246,6 +246,7 @@ export class LocationInfoPresenter extends Component {
         this.overlay.active = true;
         this.promptRoot.active = false;
         this.node.getComponent(LocationBootstrap)?.setTourPaused(true);
+        this.node.emit('location-info-opened', context);
         this.showCurrentImage();
         this.layoutUi(true);
     };
@@ -265,7 +266,7 @@ export class LocationInfoPresenter extends Component {
     private onInteractionEnter(context: LocationInteractionContext): void {
         if (context.handlerId !== 'location-info') return;
         this.activeRegionId = context.regionId;
-        this.promptLabel.string = `F  ${context.prompt || '查看遗址介绍'}`;
+        this.promptLabel.string = `点击“查看” · ${context.prompt || '查看遗址介绍'}`;
         if (!this.overlay.active) this.promptRoot.active = true;
     }
 

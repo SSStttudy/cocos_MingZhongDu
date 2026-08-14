@@ -14,6 +14,7 @@ import {
     Vec2,
     view,
 } from 'cc';
+import { TOUR_FEATURE_EVENTS } from '../tour/TourFeatureBridge';
 
 const { ccclass } = _decorator;
 const MAGNIFICATION = 1.65;
@@ -40,6 +41,8 @@ export class StoneBaseRestorationViewer extends Component {
     private expandedHandleOffset = new Vec2(96, -108);
     private lastVisibleWidth = -1;
     private lastVisibleHeight = -1;
+    private locationId = '';
+    private sceneId = '';
 
     onLoad(): void {
         this.ensureUi();
@@ -48,8 +51,10 @@ export class StoneBaseRestorationViewer extends Component {
     }
 
     /** Called by LocationBootstrap whenever its internal photo scene changes. */
-    setScene(_locationId: string, _sceneId: string): void {
+    setScene(locationId: string, sceneId: string): void {
         this.ensureUi();
+        this.locationId = locationId;
+        this.sceneId = sceneId;
         this.dragging = false;
         this.root.active = true;
         this.lastVisibleWidth = -1;
@@ -193,6 +198,7 @@ export class StoneBaseRestorationViewer extends Component {
     }
 
     private showDockedState(): void {
+        const wasDragging = this.dragging;
         this.dragging = false;
         this.lens.setPosition(this.home.x, this.home.y, 0);
         this.viewport.active = false;
@@ -200,6 +206,12 @@ export class StoneBaseRestorationViewer extends Component {
         this.expandedVisual.active = false;
         this.layoutHandle();
         this.drawFallback(false);
+        if (wasDragging) {
+            this.node.emit(TOUR_FEATURE_EVENTS.magnifierCollapsed, {
+                locationId: this.locationId,
+                sceneId: this.sceneId,
+            });
+        }
     }
 
     private showExpandedState(): void {
@@ -209,6 +221,10 @@ export class StoneBaseRestorationViewer extends Component {
         this.layoutHandle();
         this.drawFallback(true);
         this.alignMagnifiedImage();
+        this.node.emit(TOUR_FEATURE_EVENTS.magnifierExpanded, {
+            locationId: this.locationId,
+            sceneId: this.sceneId,
+        });
     }
 
     private updateFallbackVisibility(): void {
