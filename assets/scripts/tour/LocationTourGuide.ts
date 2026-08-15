@@ -40,6 +40,7 @@ export interface LocationTourHost {
     getTourPerspectiveScale(y: number): number;
     getTourApproachPoint(polygon: Vec2[], distance: number): Vec2;
     getTourRegion(sceneId: string, regionId: string): LocationTourTarget | null;
+    activateTourInteraction(regionId: string): boolean;
     getTourTransitionToward(targetSceneId?: string, overworldEntryId?: string): LocationTourTarget | null;
     setTourPaused(paused: boolean): void;
     returnTourToOverworld(entryId: string): void;
@@ -176,7 +177,12 @@ export class LocationTourGuide extends Component {
                     // Editor-authored interaction regions use the shared rich
                     // location card. The tour only falls back to its compact
                     // checkpoint for legacy obstacle-backed targets.
-                    if (!region.id.startsWith('interaction-')) {
+                    if (region.id.startsWith('interaction-')) {
+                        this.overlay.setContextAction(
+                            '查看',
+                            () => this.host?.activateTourInteraction(region.id),
+                        );
+                    } else {
                         this.overlay.setContextAction('查看', () => this.completeLookTarget(step));
                     }
                     this.showActionHint(step);

@@ -1098,6 +1098,16 @@ export class LocationBootstrap extends Component implements LocationTourHost {
             : null;
     }
 
+    activateTourInteraction(regionId: string): boolean {
+        const region = (this.interactionRegions.get(this.currentSceneId) ?? [])
+            .find((item) => item.id === regionId);
+        if (!region) return false;
+        const context = this.getInteractionContext(region);
+        const activated = LocationInteractionRegistry.activate(context);
+        if (activated) this.node.emit('location-interaction-activate', context);
+        return activated;
+    }
+
     getTourTransitionToward(
         targetSceneId?: string,
         overworldEntryId?: string,
