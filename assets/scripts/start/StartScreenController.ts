@@ -73,7 +73,7 @@ export class StartScreenController extends Component {
         this.buildScreen();
         if (this.startVisual) {
             this.backgroundSprite!.spriteFrame = this.startVisual;
-        } else {
+        } else if (!EDITOR) {
             this.loadBackground();
         }
         this.layout(true);

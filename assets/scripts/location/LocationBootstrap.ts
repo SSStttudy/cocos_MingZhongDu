@@ -31,6 +31,7 @@ import {
     PerspectiveSceneConfig,
 } from './LocationConfig';
 import { LocationTransitionState } from './LocationTransitionState';
+import { LocationInfoPresenter } from './LocationInfoPresenter';
 import {
     LocationInteractionContext,
     LocationInteractionRegistry,
@@ -209,13 +210,17 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.createHud();
         this.createJoystick();
         this.createActionButtons();
+        this.node.on('location-info-opened', this.onLocationInfoOpened, this);
+        this.node.on('location-info-closed', this.onLocationInfoClosed, this);
+        if (!this.node.getComponent(LocationInfoPresenter)) {
+            this.node.addComponent(LocationInfoPresenter);
+        }
         this.restorationViewer = this.node.addComponent(StoneBaseRestorationViewer);
         this.restorationViewer.setScene(this.locationId, this.currentSceneId);
         this.tourGuide = this.node.addComponent(LocationTourGuide);
         this.tourGuide.initialize(this);
         this.minimap = this.node.addComponent(LocationMinimap);
         this.minimap.initialize(this.config, this.currentSceneId, () => TourProgressStore.getCurrentStep());
-        this.node.on('location-info-closed', this.onLocationInfoClosed, this);
         this.bindInput();
         this.layoutUi();
     }
@@ -227,6 +232,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         input.off(Input.EventType.KEY_UP, this.onKeyUp, this);
         this.minimap?.shutdown();
         this.minimap = null;
+        this.node.off('location-info-opened', this.onLocationInfoOpened, this);
         this.node.off('location-info-closed', this.onLocationInfoClosed, this);
     }
 
@@ -595,9 +601,14 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private onLocationInfoClosed(context: LocationInteractionContext): void {
+        this.setTourPaused(false);
         // Guided-tour interaction steps are completed after the visitor has
         // actually read and closed the richer location card.
         this.tourGuide?.handleLocationInfoClosed(context.regionId);
+    }
+
+    private onLocationInfoOpened(): void {
+        this.setTourPaused(true);
     }
 
     private onSpeedStart(event: EventTouch): void {

@@ -24,7 +24,6 @@ import {
     LocationInteractionContext,
     LocationInteractionRegistry,
 } from './LocationInteractionRegistry';
-import { LocationBootstrap } from './LocationBootstrap';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -245,7 +244,6 @@ export class LocationInfoPresenter extends Component {
         this.bodyLabel.string = payload.body;
         this.overlay.active = true;
         this.promptRoot.active = false;
-        this.node.getComponent(LocationBootstrap)?.setTourPaused(true);
         this.node.emit('location-info-opened', context);
         this.showCurrentImage();
         this.layoutUi(true);
@@ -258,7 +256,6 @@ export class LocationInfoPresenter extends Component {
         this.currentContext = null;
         this.currentPayload = null;
         this.imageLoadToken += 1;
-        this.node.getComponent(LocationBootstrap)?.setTourPaused(false);
         this.promptRoot.active = this.activeRegionId.length > 0;
         if (closedContext) this.node.emit('location-info-closed', closedContext);
     }
