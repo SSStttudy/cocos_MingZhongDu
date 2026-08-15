@@ -45,6 +45,7 @@ export class TourGuideOverlay {
     private portraitDragDistance = 0;
     private bubbleVisibleBeforeDrag = true;
     private speechAutoHideRemaining = 0;
+    private speechContentKey = '';
     private speechBubbleWidth = 340;
     private lastWidth = 0;
     private lastHeight = 0;
@@ -151,10 +152,17 @@ export class TourGuideOverlay {
         if (speech) this.setSpeech(speech);
     }
 
-    setSpeech(text: string, state: 'welcome' | 'pointing' | 'explain' | 'complete' = 'pointing'): void {
+    setSpeech(
+        text: string,
+        state: 'welcome' | 'pointing' | 'explain' | 'complete' = 'pointing',
+        reveal = true,
+    ): void {
+        const contentKey = `${state}:${text}`;
+        const contentChanged = contentKey !== this.speechContentKey;
+        this.speechContentKey = contentKey;
         this.speechLabel.string = text;
         this.resizeSpeechBubble(text);
-        this.showSpeechBubble();
+        if (reveal && contentChanged) this.showSpeechBubble();
         this.portraitLabel.string = ({
             welcome: '迎',
             pointing: '指',

@@ -356,7 +356,7 @@ export class LocationTourGuide extends Component {
         this.transientSpeechPriority = 0;
         this.transientSpeechUntil = 0;
         const step = TourProgressStore.getCurrentStep();
-        if (step) this.overlay.setSpeech(step.speech, 'pointing');
+        if (step) this.overlay.setSpeech(step.speech, 'pointing', false);
     }
 
     private readonly onFragmentDiscovered = (event: TourFragmentEvent): void => {
