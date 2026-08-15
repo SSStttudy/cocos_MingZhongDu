@@ -50,7 +50,7 @@ export const TOUR_STEPS: TourStep[] = [
         actionHint: '已经靠近了，点击右下角“查看”试试。',
         tutorialId: 'interaction-button',
         knowledgeText: '王剑英长期开展明中都田野调查与研究，为辨识遗址范围、梳理城址格局和推动保护工作提供了重要基础。雕像记录的不只是一个人，也是一代研究者重新认识明中都的过程。',
-        locationId: 'visitor-center', sceneId: 'exterior', regionId: 'obstacle-wang',
+        locationId: 'visitor-center', sceneId: 'exterior', regionId: 'interaction-wang-research',
         proximity: 68, targetKind: 'interaction', completionMode: 'action',
         resumeAfter: { kind: 'location', locationId: 'visitor-center', sceneId: 'exterior', spawnId: 'spawn-visitor' },
     },
@@ -61,7 +61,7 @@ export const TOUR_STEPS: TourStep[] = [
         actionHint: '沙盘就在眼前，点击“查看”认识城址格局。',
         tutorialId: 'interaction-button',
         knowledgeText: '明中都以南北中轴组织主要城门、桥梁、宫殿和苑囿，重要空间沿轴线层层展开。沙盘把宫城、皇城与外城重新放回同一空间关系中，便于理解遗址之间原本的联系。',
-        locationId: 'visitor-center', sceneId: 'interior', regionId: 'obstacle-map',
+        locationId: 'visitor-center', sceneId: 'interior', regionId: 'interaction-mingzhongdu-plan',
         proximity: 72, targetKind: 'interaction', completionMode: 'action',
         resumeAfter: { kind: 'location', locationId: 'visitor-center', sceneId: 'interior', spawnId: 'spawn-exterior' },
     },
@@ -181,12 +181,12 @@ export const TOUR_STEPS: TourStep[] = [
 export const TOUR_NARRATION_POINTS: TourNarrationPoint[] = [
     {
         id: 'visitor-researcher', locationId: 'visitor-center', sceneId: 'exterior',
-        regionId: 'obstacle-wang', proximity: 88,
+        regionId: 'interaction-wang-research', proximity: 88,
         speech: '基座上的名字，连接着遗址从田野调查走向公众认知的过程。',
     },
     {
         id: 'visitor-axis', locationId: 'visitor-center', sceneId: 'interior',
-        regionId: 'obstacle-map', proximity: 92,
+        regionId: 'interaction-mingzhongdu-plan', proximity: 92,
         speech: '从沙盘上看，中轴把城门、宫殿和苑囿一层层串了起来。',
     },
     {

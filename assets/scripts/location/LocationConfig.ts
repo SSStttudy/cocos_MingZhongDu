@@ -117,7 +117,7 @@ export const LOCATION_CONFIGS: Record<string, LocationSceneConfig> = {
             ]),
             exterior: {
                 id: 'exterior',
-                title: '游客中心 · 王英雕像院落',
+                title: '游客中心 · 王剑英雕像院落',
                 backgroundAsset: 'exterior',
                 worldSize: WORLD_SIZE,
                 playerStart: new Vec2(360, -330),

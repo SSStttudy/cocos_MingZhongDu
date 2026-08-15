@@ -173,7 +173,12 @@ export class LocationTourGuide extends Component {
             );
             if (this.distanceToPolygon(this.host.getTourPlayerPosition(), region.polygon) <= (step.proximity ?? 64)) {
                 if (step.completionMode === 'action' || step.targetKind === 'interaction') {
-                    this.overlay.setContextAction('查看', () => this.completeLookTarget(step));
+                    // Editor-authored interaction regions use the shared rich
+                    // location card. The tour only falls back to its compact
+                    // checkpoint for legacy obstacle-backed targets.
+                    if (!region.id.startsWith('interaction-')) {
+                        this.overlay.setContextAction('查看', () => this.completeLookTarget(step));
+                    }
                     this.showActionHint(step);
                 } else {
                     this.completeLookTarget(step);
