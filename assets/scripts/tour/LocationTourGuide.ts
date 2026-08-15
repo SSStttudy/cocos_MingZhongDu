@@ -81,6 +81,7 @@ export class LocationTourGuide extends Component {
     update(deltaTime: number): void {
         if (!this.host || !this.overlay) return;
         this.overlay.layout();
+        this.overlay.update(deltaTime);
         this.markerAnimationTime += deltaTime;
         this.elapsed += deltaTime;
         if (this.elapsed < 0.12) return;

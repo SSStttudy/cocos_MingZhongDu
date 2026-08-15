@@ -51,6 +51,7 @@ export class OverworldTourGuide extends Component {
     update(deltaTime: number): void {
         if (!this.host || !this.overlay) return;
         this.overlay.layout();
+        this.overlay.update(deltaTime);
         this.elapsed += deltaTime;
         if (this.elapsed < 0.3) return;
         this.elapsed = 0;

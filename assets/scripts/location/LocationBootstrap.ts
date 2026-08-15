@@ -121,6 +121,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     regionData: JsonAsset | null = null;
 
     private readonly defaultMoveSpeed = 230;
+    private readonly horizontalMoveSpeedMultiplier = 1.5;
     private readonly playerRadius = 18;
     private readonly joystickRadius = 68;
     private readonly exportedCharacterHeight = 440;
@@ -704,6 +705,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         const step = this.moveInput.clone().multiplyScalar(
             this.defaultMoveSpeed * perspectiveScale * (this.speedBoostHeld ? 2 : 1) * deltaTime,
         );
+        step.x *= this.horizontalMoveSpeedMultiplier;
         const nextX = new Vec2(this.playerPosition.x + step.x, this.playerPosition.y);
         if (this.canStandAt(nextX)) this.playerPosition.x = nextX.x;
         const nextY = new Vec2(this.playerPosition.x, this.playerPosition.y + step.y);

@@ -78,6 +78,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     mapSpriteFrame: SpriteFrame | null = null;
 
     private readonly moveSpeed = 110;
+    private readonly horizontalMoveSpeedMultiplier = 1.5;
     private readonly playerRadius = 22;
     private readonly joystickRadius = 72;
 
@@ -853,6 +854,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         const step = this.moveInput.clone().multiplyScalar(
             this.moveSpeed * (this.speedBoostHeld ? 2 : 1) * deltaTime,
         );
+        step.x *= this.horizontalMoveSpeedMultiplier;
         const nextX = new Vec2(this.playerPosition.x + step.x, this.playerPosition.y);
         if (this.canStandAt(nextX)) this.playerPosition.x = nextX.x;
         const nextY = new Vec2(this.playerPosition.x, this.playerPosition.y + step.y);

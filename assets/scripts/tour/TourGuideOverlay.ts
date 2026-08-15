@@ -16,6 +16,7 @@ import {
 const CREAM = new Color(255, 246, 218, 255);
 const GOLD = new Color(222, 185, 104, 255);
 const INK = new Color(0, 0, 0, 128);
+const SPEECH_AUTO_HIDE_SECONDS = 6;
 
 export class TourGuideOverlay {
     readonly root: Node;
@@ -43,6 +44,7 @@ export class TourGuideOverlay {
     private portraitRequest = 0;
     private portraitDragDistance = 0;
     private bubbleVisibleBeforeDrag = true;
+    private speechAutoHideRemaining = 0;
     private speechBubbleWidth = 340;
     private lastWidth = 0;
     private lastHeight = 0;
@@ -137,6 +139,12 @@ export class TourGuideOverlay {
         }
     }
 
+    update(deltaTime: number): void {
+        if (!this.speechBubble.active || this.minimized || this.speechAutoHideRemaining <= 0) return;
+        this.speechAutoHideRemaining -= deltaTime;
+        if (this.speechAutoHideRemaining <= 0) this.speechBubble.active = false;
+    }
+
     setObjective(title: string, objective: string, speech?: string): void {
         this.objectiveTitle.string = title || '自由探索';
         this.objectiveText.string = objective || '主线已完成，可自由游览';
@@ -146,6 +154,7 @@ export class TourGuideOverlay {
     setSpeech(text: string, state: 'welcome' | 'pointing' | 'explain' | 'complete' = 'pointing'): void {
         this.speechLabel.string = text;
         this.resizeSpeechBubble(text);
+        this.showSpeechBubble();
         this.portraitLabel.string = ({
             welcome: '迎',
             pointing: '指',
@@ -192,6 +201,11 @@ export class TourGuideOverlay {
         );
     }
 
+    private showSpeechBubble(): void {
+        this.speechBubble.active = true;
+        this.speechAutoHideRemaining = SPEECH_AUTO_HIDE_SECONDS;
+    }
+
     private onPortraitTouchStart(event: EventTouch): void {
         event.propagationStopped = true;
         this.portraitDragDistance = 0;
@@ -211,7 +225,12 @@ export class TourGuideOverlay {
     private onPortraitTouchEnd(event: EventTouch): void {
         event.propagationStopped = true;
         if (this.portraitDragDistance < 6) {
-            this.speechBubble.active = !this.speechBubble.active;
+            if (this.speechBubble.active) {
+                this.speechBubble.active = false;
+                this.speechAutoHideRemaining = 0;
+            } else {
+                this.showSpeechBubble();
+            }
         } else {
             this.speechBubble.active = this.bubbleVisibleBeforeDrag;
         }
