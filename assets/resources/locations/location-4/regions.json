@@ -239,6 +239,26 @@
               "y": 0.66
             }
           ]
+        },
+        {
+          "id": "fragment-west-gate",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 20,
+          "handlerId": "collect-fragment",
+          "prompt": "收集城垣门户碎片",
+          "triggerMode": "button",
+          "payload": "{\"fragmentId\":\"west-gate\",\"title\":\"城垣门户碎片\"}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.735, "y": 0.74 },
+            { "x": 0.825, "y": 0.74 },
+            { "x": 0.825, "y": 0.82 },
+            { "x": 0.735, "y": 0.82 }
+          ]
         }
       ],
       "occlusionLines": [

@@ -43,8 +43,17 @@ import {
 } from '../tour/LocationTourGuide';
 import { TourProgressStore } from '../tour/TourProgressStore';
 import { OcclusionLineShape } from './editor/OcclusionLineShape';
+import { FragmentCollectionController } from '../collection/FragmentCollectionController';
 
 const { ccclass, executeInEditMode, property } = _decorator;
+
+export type LocationCollectionTarget = {
+    regionId: string;
+    handlerId: string;
+    prompt: string;
+    payload: unknown;
+    position: Vec2;
+};
 
 @ccclass('LocationBootstrap')
 @executeInEditMode
@@ -198,6 +207,9 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         if (regionEditor) regionEditor.active = false;
         // RegionEditor 和碰撞轮廓只属于制作阶段，正式预览/微信运行不渲染。
         this.showDebugRegions = false;
+        if (!this.getComponent(FragmentCollectionController)) {
+            this.addComponent(FragmentCollectionController);
+        }
 
         const entrySpawn = locationEntry
             ? this.spawnPoints.get(this.currentSceneId)?.get(locationEntry.spawnId)
@@ -320,6 +332,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
         this.updatePlayerVisual();
         this.updateHud();
+        this.node.emit('location-runtime-scene-rendered', this.currentSceneId);
     }
 
     private createBackground(parent: Node, name: string, frame: SpriteFrame | null): Node {
@@ -1030,6 +1043,22 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
     getTourPlayerPosition(): Vec2 {
         return this.playerPosition.clone();
+    }
+
+    /** 碎片视觉标记直接读取区域编辑器数据，点位调整后无需同步代码坐标。 */
+    getCollectionTargets(): LocationCollectionTarget[] {
+        return (this.interactionRegions.get(this.currentSceneId) ?? [])
+            .filter((region) => (
+                region.handlerId === 'collect-fragment'
+                || region.handlerId === 'assemble-fragments'
+            ))
+            .map((region) => ({
+                regionId: region.id,
+                handlerId: region.handlerId,
+                prompt: region.prompt,
+                payload: region.payload,
+                position: this.polygonCenter(region.points),
+            }));
     }
 
     getTourPerspectiveScale(y: number): number {

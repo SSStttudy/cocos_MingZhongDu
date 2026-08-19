@@ -404,6 +404,26 @@
               "y": 0.75
             }
           ]
+        },
+        {
+          "id": "fragment-stone-base",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 20,
+          "handlerId": "collect-fragment",
+          "prompt": "收集宫殿基址碎片",
+          "triggerMode": "button",
+          "payload": "{\"fragmentId\":\"stone-base\",\"title\":\"宫殿基址碎片\"}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.775, "y": 0.78 },
+            { "x": 0.865, "y": 0.78 },
+            { "x": 0.865, "y": 0.86 },
+            { "x": 0.775, "y": 0.86 }
+          ]
         }
       ],
       "perspective": {
