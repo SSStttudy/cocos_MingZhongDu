@@ -581,6 +581,26 @@
               "y": 0.72
             }
           ]
+        },
+        {
+          "id": "fragment-wumen",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 20,
+          "handlerId": "collect-fragment",
+          "prompt": "收集中轴礼制碎片",
+          "triggerMode": "button",
+          "payload": "{\"fragmentId\":\"wumen\",\"title\":\"中轴礼制碎片\"}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.455, "y": 0.78 },
+            { "x": 0.545, "y": 0.78 },
+            { "x": 0.545, "y": 0.86 },
+            { "x": 0.455, "y": 0.86 }
+          ]
         }
       ],
       "occlusionLines": [

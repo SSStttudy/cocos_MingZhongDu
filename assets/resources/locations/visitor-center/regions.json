@@ -456,6 +456,26 @@
               "y": 0.680664
             }
           ]
+        },
+        {
+          "id": "sand-table-fragment-puzzle",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 20,
+          "handlerId": "assemble-fragments",
+          "prompt": "在沙盘上拼合遗址碎片",
+          "triggerMode": "button",
+          "payload": "{}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.335, "y": 0.79 },
+            { "x": 0.425, "y": 0.79 },
+            { "x": 0.425, "y": 0.87 },
+            { "x": 0.335, "y": 0.87 }
+          ]
         }
       ],
       "perspective": {
@@ -636,6 +656,26 @@
               "x": 0.447196,
               "y": 0.842759
             }
+          ]
+        },
+        {
+          "id": "fragment-visitor-gate",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 20,
+          "handlerId": "collect-fragment",
+          "prompt": "收集皇城方位碎片",
+          "triggerMode": "button",
+          "payload": "{\"fragmentId\":\"visitor-gate\",\"title\":\"皇城方位碎片\"}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.405, "y": 0.68 },
+            { "x": 0.495, "y": 0.68 },
+            { "x": 0.495, "y": 0.76 },
+            { "x": 0.405, "y": 0.76 }
           ]
         }
       ],

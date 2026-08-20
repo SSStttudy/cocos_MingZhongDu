@@ -58,6 +58,7 @@ export class StartScreenController extends Component {
     private restartPanel: Node | null = null;
     private startButton: Node | null = null;
     private restartButton: Node | null = null;
+    private avatarButton: Node | null = null;
     private scrollTransition: Node | null = null;
     private scrollLeft: Node | null = null;
     private scrollRight: Node | null = null;
@@ -122,7 +123,6 @@ export class StartScreenController extends Component {
             ? '自由探索'
             : this.resumeExistingTour ? '继续游览' : '开始游览';
         this.startButton = this.createButton('StartButton', startText, 274, 58, true, this.mainActions);
-        this.startButton.setPosition(0, 58);
         this.restartButton = this.createButton(
             'RestartTourButton',
             progress.completed ? '重新开始导览' : '重新开始',
@@ -131,10 +131,10 @@ export class StartScreenController extends Component {
             false,
             this.mainActions,
         );
-        this.restartButton.setPosition(0, -5);
         this.restartButton.active = this.resumeExistingTour;
+        this.avatarButton = this.createButton('AvatarWorkshopButton', '创建自己的角色', 274, 50, false, this.mainActions);
         const settingsButton = this.createButton('SettingsButton', '设置', 274, 50, false, this.mainActions);
-        settingsButton.setPosition(0, this.resumeExistingTour ? -62 : -22);
+        this.layoutActionButtons();
 
         const version = this.createLabel('开发版本 0.2', 13, new Color(232, 223, 202, 190), this.screenRoot);
         version.node.name = 'VersionLabel';
@@ -146,6 +146,7 @@ export class StartScreenController extends Component {
         if (!EDITOR) {
             this.startButton.on(Node.EventType.TOUCH_END, this.startGame, this);
             this.restartButton.on(Node.EventType.TOUCH_END, this.openRestartPanel, this);
+            this.avatarButton.on(Node.EventType.TOUCH_END, this.openAvatarWorkshop, this);
             settingsButton.on(Node.EventType.TOUCH_END, this.openSettings, this);
         }
     }
@@ -530,8 +531,7 @@ export class StartScreenController extends Component {
         this.closeRestartPanel();
         this.restartButton!.active = false;
         this.setButtonText(this.startButton!, '开始游览');
-        const settingsButton = this.mainActions?.getChildByName('SettingsButton');
-        settingsButton?.setPosition(0, -22);
+        this.layoutActionButtons();
     }
 
     private setButtonText(button: Node, text: string): void {
@@ -550,6 +550,38 @@ export class StartScreenController extends Component {
         const opacity = this.settingsPanel.getComponent(UIOpacity) ?? this.settingsPanel.addComponent(UIOpacity);
         opacity.opacity = 0;
         tween(opacity).to(0.18, { opacity: 255 }).start();
+    }
+
+    private openAvatarWorkshop(event?: EventTouch): void {
+        this.stopTouch(event);
+        if (this.starting || EDITOR) return;
+        const accepted = director.loadScene('AvatarWorkshop', (error) => {
+            if (error) {
+                console.error('[StartScreen] 角色工坊场景加载失败。', error);
+                this.starting = false;
+            }
+        });
+        if (!accepted) {
+            this.starting = false;
+            console.error('[StartScreen] AvatarWorkshop 尚未加入当前构建场景。');
+            return;
+        }
+        // 防止用户在异步加载期间重复触发场景切换。
+        this.starting = true;
+    }
+
+    private layoutActionButtons(): void {
+        const settingsButton = this.mainActions?.getChildByName('SettingsButton');
+        if (this.resumeExistingTour) {
+            this.startButton?.setPosition(0, 84);
+            this.restartButton?.setPosition(0, 22);
+            this.avatarButton?.setPosition(0, -38);
+            settingsButton?.setPosition(0, -96);
+        } else {
+            this.startButton?.setPosition(0, 56);
+            this.avatarButton?.setPosition(0, -8);
+            settingsButton?.setPosition(0, -68);
+        }
     }
 
     private closeSettings(event?: EventTouch): void {

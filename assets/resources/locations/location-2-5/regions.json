@@ -428,6 +428,26 @@
               "y": 0.999437
             }
           ]
+        },
+        {
+          "id": "fragment-ancient-well",
+          "type": 2,
+          "typeName": "Interaction",
+          "enabled": true,
+          "priority": 20,
+          "handlerId": "collect-fragment",
+          "prompt": "收集营造水脉碎片",
+          "triggerMode": "button",
+          "payload": "{\"fragmentId\":\"ancient-well\",\"title\":\"营造水脉碎片\"}",
+          "targetSceneId": "",
+          "targetSpawnId": "",
+          "overworldEntryId": "",
+          "points": [
+            { "x": 0.575, "y": 0.67 },
+            { "x": 0.665, "y": 0.67 },
+            { "x": 0.665, "y": 0.73 },
+            { "x": 0.575, "y": 0.73 }
+          ]
         }
       ],
       "perspective": {

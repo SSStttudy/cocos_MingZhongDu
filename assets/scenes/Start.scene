@@ -283,7 +283,10 @@
     },
     "_enabled": true,
     "__prefab": null,
-    "startVisual": null,
+    "startVisual": {
+      "__uuid__": "4d78d5d8-82c5-4ea9-a825-9344be3e41e0@f9941",
+      "__expectedType__": "cc.SpriteFrame"
+    },
     "visualResourcePath": "start/start-visual/spriteFrame",
     "titleOffsetY": 152,
     "actionsOffsetY": -138,
