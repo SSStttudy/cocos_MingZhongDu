@@ -47,6 +47,7 @@ export class TourGuideOverlay {
     private speechAutoHideRemaining = 0;
     private speechContentKey = '';
     private speechBubbleWidth = 340;
+    private hintsVisible = true;
     private lastWidth = 0;
     private lastHeight = 0;
 
@@ -162,7 +163,7 @@ export class TourGuideOverlay {
         this.speechContentKey = contentKey;
         this.speechLabel.string = text;
         this.resizeSpeechBubble(text);
-        if (reveal && contentChanged) this.showSpeechBubble();
+        if (reveal && contentChanged && this.hintsVisible) this.showSpeechBubble();
         this.portraitLabel.string = ({
             welcome: '迎',
             pointing: '指',
@@ -210,6 +211,7 @@ export class TourGuideOverlay {
     }
 
     private showSpeechBubble(): void {
+        if (!this.hintsVisible) return;
         this.speechBubble.active = true;
         this.speechAutoHideRemaining = SPEECH_AUTO_HIDE_SECONDS;
     }
@@ -292,10 +294,23 @@ export class TourGuideOverlay {
         return this.checkpointPanel.active;
     }
 
+    setHintsVisible(visible: boolean): void {
+        this.hintsVisible = visible;
+        this.objectiveCard.active = visible;
+        this.minimizeButton.active = visible;
+        this.speechGroup.active = visible && !this.minimized;
+        if (!visible) {
+            this.speechBubble.active = false;
+            this.speechAutoHideRemaining = 0;
+        } else if (!this.minimized && this.speechLabel.string) {
+            this.showSpeechBubble();
+        }
+    }
+
     private toggleMinimized(event?: EventTouch): void {
         if (event) event.propagationStopped = true;
         this.minimized = !this.minimized;
-        this.speechGroup.active = !this.minimized;
+        this.speechGroup.active = this.hintsVisible && !this.minimized;
         const label = this.minimizeButton.getChildByName('ButtonLabel')?.getComponent(Label);
         if (label) label.string = this.minimized ? '导' : '－';
     }

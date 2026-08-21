@@ -14,16 +14,15 @@ import {
     Sprite,
     SpriteFrame,
     tween,
-    UIOpacity,
     UITransform,
     Vec3,
     view,
 } from 'cc';
 import { EDITOR } from 'cc/env';
 import { LocationTransitionState } from '../location/LocationTransitionState';
-import { GameSettings, loadSettings, saveSettings } from './GameSettings';
 import { TourProgressStore } from '../tour/TourProgressStore';
 import { getLocationCocosSceneName } from '../tour/TourConfig';
+import { SettingsOverlay } from './SettingsOverlay';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -54,7 +53,7 @@ export class StartScreenController extends Component {
     private backgroundFallback: Node | null = null;
     private titleGroup: Node | null = null;
     private mainActions: Node | null = null;
-    private settingsPanel: Node | null = null;
+    private settingsOverlay: SettingsOverlay | null = null;
     private restartPanel: Node | null = null;
     private startButton: Node | null = null;
     private restartButton: Node | null = null;
@@ -62,9 +61,6 @@ export class StartScreenController extends Component {
     private scrollTransition: Node | null = null;
     private scrollLeft: Node | null = null;
     private scrollRight: Node | null = null;
-    private musicValue: Label | null = null;
-    private soundValue: Label | null = null;
-    private settings: GameSettings = loadSettings();
     private starting = false;
     private resumeExistingTour = false;
     private lastWidth = 0;
@@ -139,58 +135,16 @@ export class StartScreenController extends Component {
         const version = this.createLabel('开发版本 0.2', 13, new Color(232, 223, 202, 190), this.screenRoot);
         version.node.name = 'VersionLabel';
 
-        this.createSettingsPanel();
         this.createRestartPanel();
         this.createScrollTransition();
 
         if (!EDITOR) {
+            this.settingsOverlay = this.node.getComponent(SettingsOverlay) ?? this.node.addComponent(SettingsOverlay);
+            this.settingsOverlay.initialize(this.screenRoot);
             this.startButton.on(Node.EventType.TOUCH_END, this.startGame, this);
             this.restartButton.on(Node.EventType.TOUCH_END, this.openRestartPanel, this);
             this.avatarButton.on(Node.EventType.TOUCH_END, this.openAvatarWorkshop, this);
             settingsButton.on(Node.EventType.TOUCH_END, this.openSettings, this);
-        }
-    }
-
-    private createSettingsPanel(): void {
-        this.settingsPanel = this.createNode('SettingsPanel', this.screenRoot!);
-        this.settingsPanel.active = false;
-        this.settingsPanel.addComponent(UITransform);
-        this.settingsPanel.addComponent(BlockInputEvents);
-
-        const dim = this.createNode('SettingsDim', this.settingsPanel);
-        dim.addComponent(UITransform);
-        dim.addComponent(Graphics);
-
-        const card = this.createNode('SettingsCard', this.settingsPanel);
-        card.addComponent(UITransform).setContentSize(470, 330);
-        const cardGraphics = card.addComponent(Graphics);
-        cardGraphics.fillColor = new Color(39, 43, 37, 248);
-        cardGraphics.roundRect(-235, -165, 470, 330, 18);
-        cardGraphics.fill();
-        cardGraphics.strokeColor = new Color(210, 181, 117, 210);
-        cardGraphics.lineWidth = 2;
-        cardGraphics.roundRect(-235, -165, 470, 330, 18);
-        cardGraphics.stroke();
-
-        const heading = this.createLabel('设置', 34, CREAM, card);
-        heading.node.setPosition(0, 112);
-        const hint = this.createLabel('开关会保存在当前设备', 14, MUTED_CREAM, card);
-        hint.node.setPosition(0, 76);
-
-        const musicRow = this.createSettingRow('MusicRow', '音乐', 25, card);
-        this.musicValue = musicRow.value;
-        const soundRow = this.createSettingRow('SoundRow', '音效', -43, card);
-        this.soundValue = soundRow.value;
-
-        const close = this.createButton('CloseSettingsButton', '返回', 184, 46, false, card);
-        close.setPosition(0, -116);
-        this.refreshSettingsLabels();
-
-        if (!EDITOR) {
-            musicRow.node.on(Node.EventType.TOUCH_END, this.toggleMusic, this);
-            soundRow.node.on(Node.EventType.TOUCH_END, this.toggleSound, this);
-            close.on(Node.EventType.TOUCH_END, this.closeSettings, this);
-            card.on(Node.EventType.TOUCH_END, this.stopTouch, this);
         }
     }
 
@@ -226,27 +180,6 @@ export class StartScreenController extends Component {
             cancel.on(Node.EventType.TOUCH_END, this.closeRestartPanel, this);
             card.on(Node.EventType.TOUCH_END, this.stopTouch, this);
         }
-    }
-
-    private createSettingRow(
-        name: string,
-        labelText: string,
-        y: number,
-        parent: Node,
-    ): { node: Node; value: Label } {
-        const row = this.createNode(name, parent);
-        row.setPosition(0, y);
-        row.addComponent(UITransform).setContentSize(350, 54);
-        const graphics = row.addComponent(Graphics);
-        graphics.fillColor = new Color(255, 255, 255, 18);
-        graphics.roundRect(-175, -27, 350, 54, 10);
-        graphics.fill();
-        const label = this.createLabel(labelText, 21, CREAM, row);
-        label.horizontalAlign = Label.HorizontalAlign.LEFT;
-        label.node.setPosition(-105, 0);
-        const value = this.createLabel('', 18, GOLD, row);
-        value.node.setPosition(105, 0);
-        return { node: row, value };
     }
 
     private createScrollTransition(): void {
@@ -363,19 +296,6 @@ export class StartScreenController extends Component {
         const version = this.screenRoot.getChildByName('VersionLabel');
         version?.setPosition(visible.width * 0.5 - 92, -visible.height * 0.5 + 28);
 
-        if (this.settingsPanel) {
-            this.settingsPanel.getComponent(UITransform)?.setContentSize(visible);
-            const dim = this.settingsPanel.getChildByName('SettingsDim');
-            dim?.getComponent(UITransform)?.setContentSize(visible);
-            const graphics = dim?.getComponent(Graphics);
-            if (graphics) {
-                graphics.clear();
-                graphics.fillColor = new Color(8, 12, 10, 190);
-                graphics.rect(-visible.width * 0.5, -visible.height * 0.5, visible.width, visible.height);
-                graphics.fill();
-            }
-        }
-
         if (this.restartPanel) {
             this.restartPanel.getComponent(UITransform)?.setContentSize(visible);
             const dim = this.restartPanel.getChildByName('RestartDim');
@@ -463,7 +383,7 @@ export class StartScreenController extends Component {
         this.stopTouch(event);
         if (this.starting || EDITOR) return;
         this.starting = true;
-        this.closeSettings();
+        this.settingsOverlay?.close();
         this.scrollTransition!.active = true;
         this.layoutScrollPanels(true);
 
@@ -543,13 +463,8 @@ export class StartScreenController extends Component {
 
     private openSettings(event?: EventTouch): void {
         this.stopTouch(event);
-        if (this.starting || !this.settingsPanel) return;
-        this.settings = loadSettings();
-        this.refreshSettingsLabels();
-        this.settingsPanel.active = true;
-        const opacity = this.settingsPanel.getComponent(UIOpacity) ?? this.settingsPanel.addComponent(UIOpacity);
-        opacity.opacity = 0;
-        tween(opacity).to(0.18, { opacity: 255 }).start();
+        if (this.starting) return;
+        this.settingsOverlay?.open();
     }
 
     private openAvatarWorkshop(event?: EventTouch): void {
@@ -582,30 +497,6 @@ export class StartScreenController extends Component {
             this.avatarButton?.setPosition(0, -8);
             settingsButton?.setPosition(0, -68);
         }
-    }
-
-    private closeSettings(event?: EventTouch): void {
-        this.stopTouch(event);
-        if (this.settingsPanel) this.settingsPanel.active = false;
-    }
-
-    private toggleMusic(event?: EventTouch): void {
-        this.stopTouch(event);
-        this.settings.musicEnabled = !this.settings.musicEnabled;
-        this.settings = saveSettings(this.settings);
-        this.refreshSettingsLabels();
-    }
-
-    private toggleSound(event?: EventTouch): void {
-        this.stopTouch(event);
-        this.settings.soundEnabled = !this.settings.soundEnabled;
-        this.settings = saveSettings(this.settings);
-        this.refreshSettingsLabels();
-    }
-
-    private refreshSettingsLabels(): void {
-        if (this.musicValue) this.musicValue.string = this.settings.musicEnabled ? '开启' : '关闭';
-        if (this.soundValue) this.soundValue.string = this.settings.soundEnabled ? '开启' : '关闭';
     }
 
     private stopTouch(event?: EventTouch): void {

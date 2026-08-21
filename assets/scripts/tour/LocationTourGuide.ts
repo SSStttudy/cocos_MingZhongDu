@@ -16,6 +16,7 @@ import {
     TourFeatureBridge,
     TourFragmentEvent,
 } from './TourFeatureBridge';
+import { loadSettings, onSettingsChanged } from '../start/GameSettings';
 
 const { ccclass } = _decorator;
 
@@ -65,12 +66,19 @@ export class LocationTourGuide extends Component {
     private transientSpeechKey = '';
     private lastActionHintStepId = '';
     private missingPromptedSteps = new Set<string>();
+    private hintsVisible = true;
+    private suspended = false;
+    private unsubscribeSettings: (() => void) | null = null;
 
     initialize(host: LocationTourHost): void {
         this.host = host;
         this.eventNode = host.node;
         this.overlay = new TourGuideOverlay(host.node);
         this.overlay.root.setSiblingIndex(host.node.children.length - 1);
+        this.applyHintsVisible(loadSettings().tourHintsEnabled);
+        this.unsubscribeSettings = onSettingsChanged((settings) => {
+            this.applyHintsVisible(settings.tourHintsEnabled);
+        });
         host.node.on(TOUR_FEATURE_EVENTS.fragmentDiscovered, this.onFragmentDiscovered, this);
         host.node.on(TOUR_FEATURE_EVENTS.fragmentCollected, this.onFragmentCollected, this);
         host.node.on(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, this.onFragmentSceneCompleted, this);
@@ -82,6 +90,7 @@ export class LocationTourGuide extends Component {
     update(deltaTime: number): void {
         if (!this.host || !this.overlay) return;
         this.overlay.layout();
+        if (this.suspended) return;
         this.overlay.update(deltaTime);
         this.markerAnimationTime += deltaTime;
         this.elapsed += deltaTime;
@@ -94,6 +103,8 @@ export class LocationTourGuide extends Component {
     }
 
     onDestroy(): void {
+        this.unsubscribeSettings?.();
+        this.unsubscribeSettings = null;
         this.eventNode?.off(TOUR_FEATURE_EVENTS.fragmentDiscovered, this.onFragmentDiscovered, this);
         this.eventNode?.off(TOUR_FEATURE_EVENTS.fragmentCollected, this.onFragmentCollected, this);
         this.eventNode?.off(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, this.onFragmentSceneCompleted, this);
@@ -102,6 +113,29 @@ export class LocationTourGuide extends Component {
         this.host = null;
         this.overlay?.destroy();
         this.overlay = null;
+    }
+
+    setSuspended(suspended: boolean): void {
+        this.suspended = suspended;
+        if (!suspended && this.hintsVisible) {
+            this.refreshObjective(false);
+            this.updateTarget();
+        }
+    }
+
+    private applyHintsVisible(visible: boolean): void {
+        this.hintsVisible = visible;
+        this.overlay?.setHintsVisible(visible);
+        if (this.marker) this.marker.active = visible;
+        if (this.routeDots) this.routeDots.active = visible;
+        if (visible && !this.suspended) {
+            this.refreshObjective(false);
+            this.updateTarget();
+        } else {
+            this.transientSpeechKey = '';
+            this.transientSpeechPriority = 0;
+            this.transientSpeechUntil = 0;
+        }
     }
 
     handleOverworldTransition(entryId: string): void {
@@ -348,6 +382,7 @@ export class LocationTourGuide extends Component {
 
     private showTransientSpeech(key: string, text: string, priority: number, duration: number): boolean {
         if (!this.overlay) return false;
+        if (!this.hintsVisible || this.suspended) return true;
         if (
             this.markerAnimationTime < this.transientSpeechUntil
             && this.transientSpeechKey !== key
@@ -485,6 +520,7 @@ export class LocationTourGuide extends Component {
         this.marker.addComponent(UITransform).setContentSize(180, 220);
         this.markerGraphics = this.marker.addComponent(Graphics);
         world.addChild(this.marker);
+        this.marker.active = this.hintsVisible;
         this.placeMarkerBehindPlayer(world);
     }
 
@@ -560,6 +596,7 @@ export class LocationTourGuide extends Component {
         this.routeDots.addComponent(UITransform);
         this.routeGraphics = this.routeDots.addComponent(Graphics);
         world.addChild(this.routeDots);
+        this.routeDots.active = this.hintsVisible;
         this.routeDots.setSiblingIndex(Math.min(2, world.children.length - 1));
     }
 

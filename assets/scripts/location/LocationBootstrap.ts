@@ -47,6 +47,8 @@ import { OcclusionLineShape } from './editor/OcclusionLineShape';
 import { LocationMinimap } from '../minimap/LocationMinimap';
 import { StoneBaseRestorationViewer } from '../restoration/StoneBaseRestorationViewer';
 import { FragmentCollectionController } from '../collection/FragmentCollectionController';
+import { SettingsOverlay } from '../start/SettingsOverlay';
+import { loadSettings } from '../start/GameSettings';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -188,6 +190,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private tourGuide: LocationTourGuide | null = null;
     private restorationViewer: StoneBaseRestorationViewer | null = null;
     private tourPaused = false;
+    private settingsPaused = false;
+    private settingsOverlay: SettingsOverlay | null = null;
 
     onLoad(): void {
         this.config = getLocationConfig(this.locationId);
@@ -232,7 +236,16 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.tourGuide = this.node.addComponent(LocationTourGuide);
         this.tourGuide.initialize(this);
         this.minimap = this.node.addComponent(LocationMinimap);
-        this.minimap.initialize(this.config, this.currentSceneId, () => TourProgressStore.getCurrentStep());
+        this.minimap.initialize(
+            this.config,
+            this.currentSceneId,
+            () => loadSettings().tourHintsEnabled ? TourProgressStore.getCurrentStep() : null,
+        );
+        this.settingsOverlay = this.node.addComponent(SettingsOverlay);
+        this.settingsOverlay.initialize(this.node, {
+            onVisibilityChanged: (visible) => this.setSettingsPaused(visible),
+        });
+        this.settingsOverlay.createEntryButton(this.node);
         this.bindInput();
         this.layoutUi();
     }
@@ -608,7 +621,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private activateInteraction(): void {
-        if (this.tourPaused) return;
+        if (this.isGameplayPaused()) return;
         if (this.activateNearbyInteraction()) return;
         this.tourGuide?.activateCurrentTarget();
     }
@@ -626,7 +639,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
     private onSpeedStart(event: EventTouch): void {
         event.propagationStopped = true;
-        if (this.speedTouchId !== null || this.tourPaused) return;
+        if (this.speedTouchId !== null || this.isGameplayPaused()) return;
         this.speedTouchId = event.getID();
         this.speedBoostHeld = true;
         this.speedButton.setScale(0.9, 0.9, 1);
@@ -646,7 +659,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private onKeyDown(event: EventKeyboard): void {
-        if (this.tourPaused) return;
+        if (this.isGameplayPaused()) return;
         if (
             event.keyCode === KeyCode.KEY_F
             || event.keyCode === KeyCode.KEY_E
@@ -677,7 +690,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private onJoystickStart(event: EventTouch): void {
-        if (this.activeTouchId !== null || this.tourPaused) return;
+        if (this.activeTouchId !== null || this.isGameplayPaused()) return;
         this.activeTouchId = event.getID();
         this.updateJoystick(event);
     }
@@ -710,7 +723,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private updateMovement(deltaTime: number): void {
-        if (this.tourPaused) {
+        if (this.isGameplayPaused()) {
             this.playerAnimator?.stop();
             return;
         }
@@ -983,7 +996,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     private checkTransitions(): void {
-        if (this.transitionCooldown > 0 || this.tourPaused) return;
+        if (this.transitionCooldown > 0 || this.isGameplayPaused()) return;
         const transition = this.sceneConfig.transitions.find((item) => (
             this.pointInPolygon(this.playerPosition, item.polygon)
         ));
@@ -1202,17 +1215,29 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
     setTourPaused(paused: boolean): void {
         this.tourPaused = paused;
-        if (paused) {
-            this.pressedKeys.clear();
-            this.activeTouchId = null;
-            this.speedBoostHeld = false;
-            this.speedTouchId = null;
-            this.speedButton?.setScale(1, 1, 1);
-            this.joystickInput.set(0, 0);
-            this.keyboardInput.set(0, 0);
-            this.joystickKnob?.setPosition(0, 0, 0);
-            this.playerAnimator?.stop();
-        }
+        if (paused) this.releaseGameplayInput();
+    }
+
+    private setSettingsPaused(paused: boolean): void {
+        this.settingsPaused = paused;
+        this.tourGuide?.setSuspended(paused);
+        if (paused) this.releaseGameplayInput();
+    }
+
+    private isGameplayPaused(): boolean {
+        return this.tourPaused || this.settingsPaused;
+    }
+
+    private releaseGameplayInput(): void {
+        this.pressedKeys.clear();
+        this.activeTouchId = null;
+        this.speedBoostHeld = false;
+        this.speedTouchId = null;
+        this.speedButton?.setScale(1, 1, 1);
+        this.joystickInput.set(0, 0);
+        this.keyboardInput.set(0, 0);
+        this.joystickKnob?.setPosition(0, 0, 0);
+        this.playerAnimator?.stop();
     }
 
     returnTourToOverworld(entryId: string): void {

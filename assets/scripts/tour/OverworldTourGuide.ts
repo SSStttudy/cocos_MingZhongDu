@@ -11,6 +11,7 @@ import {
 import { getTourStepDisplayTitle, TOUR_STEPS } from './TourConfig';
 import { TourGuideOverlay } from './TourGuideOverlay';
 import { TourProgressStore } from './TourProgressStore';
+import { loadSettings, onSettingsChanged } from '../start/GameSettings';
 
 const { ccclass } = _decorator;
 
@@ -39,11 +40,18 @@ export class OverworldTourGuide extends Component {
     private elapsed = 0;
     private lastTargetEntranceId = '';
     private lastPathOrigin = new Vec2(Number.NaN, Number.NaN);
+    private hintsVisible = true;
+    private suspended = false;
+    private unsubscribeSettings: (() => void) | null = null;
 
     initialize(host: OverworldTourHost): void {
         this.host = host;
         this.overlay = new TourGuideOverlay(host.node);
         this.overlay.root.setSiblingIndex(host.node.children.length - 1);
+        this.applyHintsVisible(loadSettings().tourHintsEnabled);
+        this.unsubscribeSettings = onSettingsChanged((settings) => {
+            this.applyHintsVisible(settings.tourHintsEnabled);
+        });
         this.refreshObjective(true);
         this.redrawRouteDots(true);
     }
@@ -51,6 +59,7 @@ export class OverworldTourGuide extends Component {
     update(deltaTime: number): void {
         if (!this.host || !this.overlay) return;
         this.overlay.layout();
+        if (this.suspended) return;
         this.overlay.update(deltaTime);
         this.elapsed += deltaTime;
         if (this.elapsed < 0.3) return;
@@ -59,6 +68,8 @@ export class OverworldTourGuide extends Component {
     }
 
     onDestroy(): void {
+        this.unsubscribeSettings?.();
+        this.unsubscribeSettings = null;
         this.overlay?.destroy();
         this.overlay = null;
     }
@@ -82,6 +93,17 @@ export class OverworldTourGuide extends Component {
         }
         // 进入地点仍交给 OverworldBootstrap，导览只记录当前“到达”步骤。
         return false;
+    }
+
+    setSuspended(suspended: boolean): void {
+        this.suspended = suspended;
+    }
+
+    private applyHintsVisible(visible: boolean): void {
+        this.hintsVisible = visible;
+        this.overlay?.setHintsVisible(visible);
+        if (this.dotsNode) this.dotsNode.active = visible;
+        if (visible) this.redrawRouteDots(true);
     }
 
     private refreshObjective(initial: boolean): void {
@@ -165,6 +187,7 @@ export class OverworldTourGuide extends Component {
         this.dotsNode.addComponent(UITransform);
         this.dotsGraphics = this.dotsNode.addComponent(Graphics);
         world.addChild(this.dotsNode);
+        this.dotsNode.active = this.hintsVisible;
         this.dotsNode.setSiblingIndex(Math.min(2, world.children.length - 1));
     }
 

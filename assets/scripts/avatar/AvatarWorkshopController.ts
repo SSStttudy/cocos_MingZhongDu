@@ -26,6 +26,7 @@ import {
     loadAvatarProfile,
     saveAvatarProfile,
 } from './AvatarProfileStore';
+import { SettingsOverlay } from '../start/SettingsOverlay';
 
 const { ccclass, property } = _decorator;
 
@@ -99,8 +100,12 @@ export class AvatarWorkshopController extends Component {
     private generating = false;
     private jobStartedAt = 0;
     private selectedPreset = 0;
+    private settingsOverlay: SettingsOverlay | null = null;
 
     onLoad(): void {
+        this.settingsOverlay = this.node.addComponent(SettingsOverlay);
+        this.settingsOverlay.initialize(this.node);
+        this.settingsOverlay.createEntryButton(this.node);
         this.presetCards.forEach((card, index) => {
             card.on(Node.EventType.TOUCH_END, () => this.selectPreset(index), this);
         });

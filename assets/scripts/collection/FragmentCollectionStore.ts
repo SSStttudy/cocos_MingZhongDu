@@ -24,6 +24,7 @@ const STORAGE_KEY = 'mingzhongdu.fragments.v1';
 type WxStorage = {
     getStorageSync?: (key: string) => unknown;
     setStorageSync?: (key: string, value: string) => void;
+    removeStorageSync?: (key: string) => void;
 };
 
 function storage(): WxStorage | null {
@@ -98,5 +99,20 @@ export class FragmentCollectionStore {
         } catch (error) {
             console.warn('[FragmentCollectionStore] 保存碎片进度失败。', error);
         }
+    }
+
+    static reset(): FragmentCollectionState {
+        const state = defaultState();
+        try {
+            const wx = storage();
+            if (typeof wx?.removeStorageSync === 'function') wx.removeStorageSync(STORAGE_KEY);
+            else if (typeof wx?.setStorageSync === 'function') {
+                wx.setStorageSync(STORAGE_KEY, JSON.stringify(state));
+            }
+            else globalThis.localStorage?.removeItem(STORAGE_KEY);
+        } catch (error) {
+            console.warn('[FragmentCollectionStore] 清除碎片进度失败。', error);
+        }
+        return state;
     }
 }

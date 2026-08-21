@@ -39,6 +39,7 @@ import {
     OverworldTourGuide,
     OverworldTourHost,
 } from '../tour/OverworldTourGuide';
+import { SettingsOverlay } from '../start/SettingsOverlay';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -102,6 +103,8 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     private speedTouchId: number | null = null;
     private speedBoostHeld = false;
     private pausedByEntrance = false;
+    private pausedBySettings = false;
+    private settingsOverlay: SettingsOverlay | null = null;
     private entrancePositions = new Map<string, Vec2>();
     private entranceTitles = new Map<string, string>();
     private entranceRadii = new Map<string, number>();
@@ -131,6 +134,11 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         this.createJoystick();
         this.createActionButtons();
         this.createEntryPanel();
+        this.settingsOverlay = this.node.addComponent(SettingsOverlay);
+        this.settingsOverlay.initialize(this.node, {
+            onVisibilityChanged: (visible) => this.setSettingsPaused(visible),
+        });
+        this.settingsOverlay.createEntryButton(this.node);
         this.tourGuide = this.node.addComponent(OverworldTourGuide);
         this.tourGuide.initialize(this);
         this.bindInput();
@@ -691,7 +699,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
 
     private onInteractionButton(event: EventTouch): void {
         event.propagationStopped = true;
-        if (this.pausedByEntrance) return;
+        if (this.isGameplayPaused()) return;
         let nearest: ResolvedEntryPoint | null = null;
         let nearestDistance = Number.POSITIVE_INFINITY;
         for (const point of this.entryPoints) {
@@ -706,7 +714,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
 
     private onSpeedStart(event: EventTouch): void {
         event.propagationStopped = true;
-        if (this.speedTouchId !== null || this.pausedByEntrance) return;
+        if (this.speedTouchId !== null || this.isGameplayPaused()) return;
         this.speedTouchId = event.getID();
         this.speedBoostHeld = true;
         this.speedButton.setScale(0.9, 0.9, 1);
@@ -783,7 +791,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     }
 
     private onKeyDown(event: EventKeyboard): void {
-        if (this.pausedByEntrance) return;
+        if (this.isGameplayPaused()) return;
         this.pressedKeys.add(event.keyCode);
         this.refreshKeyboardInput();
     }
@@ -807,7 +815,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     }
 
     private onJoystickStart(event: EventTouch): void {
-        if (this.activeTouchId !== null || this.pausedByEntrance) return;
+        if (this.activeTouchId !== null || this.isGameplayPaused()) return;
         this.activeTouchId = event.getID();
         this.updateJoystick(event);
     }
@@ -836,7 +844,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     }
 
     private updateMovement(deltaTime: number): void {
-        if (this.pausedByEntrance) {
+        if (this.isGameplayPaused()) {
             this.playerAnimator?.stop();
             return;
         }
@@ -1265,17 +1273,29 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
 
     setTourPaused(paused: boolean): void {
         this.pausedByEntrance = paused;
-        if (paused) {
-            this.pressedKeys.clear();
-            this.activeTouchId = null;
-            this.speedBoostHeld = false;
-            this.speedTouchId = null;
-            this.speedButton?.setScale(1, 1, 1);
-            this.joystickInput.set(0, 0);
-            this.keyboardInput.set(0, 0);
-            this.joystickKnob?.setPosition(0, 0, 0);
-            this.playerAnimator?.stop();
-        }
+        if (paused) this.releaseGameplayInput();
+    }
+
+    private setSettingsPaused(paused: boolean): void {
+        this.pausedBySettings = paused;
+        this.tourGuide?.setSuspended(paused);
+        if (paused) this.releaseGameplayInput();
+    }
+
+    private isGameplayPaused(): boolean {
+        return this.pausedByEntrance || this.pausedBySettings;
+    }
+
+    private releaseGameplayInput(): void {
+        this.pressedKeys.clear();
+        this.activeTouchId = null;
+        this.speedBoostHeld = false;
+        this.speedTouchId = null;
+        this.speedButton?.setScale(1, 1, 1);
+        this.joystickInput.set(0, 0);
+        this.keyboardInput.set(0, 0);
+        this.joystickKnob?.setPosition(0, 0, 0);
+        this.playerAnimator?.stop();
     }
 
     finishTourCheckpoint(source: OverworldTourEntranceContext, targetEntranceId: string): void {
