@@ -27,6 +27,7 @@ import {
     resetSettings,
     saveSettings,
 } from './GameSettings';
+import { SurveyQuestionnaire } from './SurveyQuestionnaire';
 
 const { ccclass } = _decorator;
 
@@ -42,7 +43,15 @@ const PALACE_RED = new Color(116, 43, 31, 255);
 const VERMILION = new Color(151, 62, 43, 255);
 const DEEP_RED = new Color(62, 25, 22, 255);
 
-type SettingsCategory = 'audio' | 'tour' | 'data' | 'about';
+type SettingsCategory = 'audio' | 'tour' | 'data' | 'survey' | 'about';
+
+const SETTINGS_CATEGORY_ORDER: readonly SettingsCategory[] = [
+    'audio',
+    'tour',
+    'data',
+    'survey',
+    'about',
+];
 
 type SettingsRowLayout = {
     row: Node;
@@ -74,6 +83,7 @@ export class SettingsOverlay extends Component {
     private confirmRoot: Node | null = null;
     private confirmCard: Node | null = null;
     private confirmAction: (() => void) | null = null;
+    private surveyQuestionnaire: SurveyQuestionnaire | null = null;
     private categoryButtons = new Map<SettingsCategory, Node>();
     private categoryPanels = new Map<SettingsCategory, Node>();
     private toggleValues = new Map<keyof GameSettings, Label>();
@@ -106,6 +116,7 @@ export class SettingsOverlay extends Component {
     open(event?: EventTouch): void {
         this.stopTouch(event);
         if (!this.overlayRoot || this.visible) return;
+        this.surveyQuestionnaire?.close();
         this.settings = loadSettings();
         this.refreshToggleValues();
         this.hideConfirmation();
@@ -127,6 +138,7 @@ export class SettingsOverlay extends Component {
     close(event?: EventTouch): void {
         this.stopTouch(event);
         if (!this.overlayRoot || !this.visible || this.confirmRoot?.active) return;
+        this.surveyQuestionnaire?.close();
         this.fadeTween?.stop();
         this.fadeTween = null;
         this.visible = false;
@@ -146,6 +158,7 @@ export class SettingsOverlay extends Component {
         if (this.visible) this.options.onVisibilityChanged?.(false);
         this.overlayRoot?.destroy();
         this.overlayRoot = null;
+        this.surveyQuestionnaire = null;
     }
 
     createEntryButton(parent: Node, topOffset = 0): Node {
@@ -216,6 +229,7 @@ export class SettingsOverlay extends Component {
 
     private build(): void {
         this.overlayRoot?.destroy();
+        this.surveyQuestionnaire = null;
         if (!this.uiRoot) return;
         this.categoryButtons.clear();
         this.categoryPanels.clear();
@@ -252,6 +266,7 @@ export class SettingsOverlay extends Component {
         this.createCategoryButton('audio', '声音');
         this.createCategoryButton('tour', '导览');
         this.createCategoryButton('data', '数据');
+        this.createCategoryButton('survey', '问卷');
         this.createCategoryButton('about', '关于');
 
         this.content = this.makeNode('SettingsContent', this.shell);
@@ -273,8 +288,11 @@ export class SettingsOverlay extends Component {
         this.createAudioPanel();
         this.createTourPanel();
         this.createDataPanel();
+        this.createSurveyPanel();
         this.createAboutPanel();
         this.createConfirmation();
+        this.surveyQuestionnaire = this.overlayRoot.addComponent(SurveyQuestionnaire);
+        this.surveyQuestionnaire.initialize(this.overlayRoot);
         this.selectCategory('audio');
         this.refreshToggleValues();
     }
@@ -360,6 +378,31 @@ export class SettingsOverlay extends Component {
         detail.horizontalAlign = Label.HorizontalAlign.LEFT;
         detail.verticalAlign = Label.VerticalAlign.TOP;
         detail.overflow = Label.Overflow.SHRINK;
+    }
+
+    private createSurveyPanel(): void {
+        const panel = this.createCategoryPanel('survey');
+        this.createActionRow(
+            panel,
+            '文化传播体验调查',
+            '共15题，约3—4分钟，重点了解文化传播效果',
+            '开始填写',
+            70,
+            () => this.surveyQuestionnaire?.open(),
+            false,
+        );
+        const note = SettingsOverlay.makeLabel(
+            '匿名填写，不收集姓名或联系方式。答卷将保存在当前设备。',
+            14,
+            INK_MUTED,
+            panel,
+            560,
+            46,
+        );
+        note.node.name = 'SettingsSurveyNote';
+        note.node.setPosition(0, -30);
+        note.horizontalAlign = Label.HorizontalAlign.LEFT;
+        note.enableWrapText = true;
     }
 
     private createCategoryButton(category: SettingsCategory, text: string): void {
@@ -513,6 +556,7 @@ export class SettingsOverlay extends Component {
             audio: '声音设置',
             tour: '导览设置',
             data: '数据管理',
+            survey: '问卷调查',
             about: '关于明中都',
         };
         if (this.heading) this.heading.string = titles[category];
@@ -656,9 +700,9 @@ export class SettingsOverlay extends Component {
         subtitleNode?.setPosition(4, shellHeight * 0.5 - (shortLayout ? 68 : 84));
         const buttonStartY = shellHeight * 0.5 - (shortLayout ? 108 : 145);
         const buttonGap = shortLayout
-            ? Math.max(45, Math.min(54, (shellHeight - 145) / 3))
+            ? Math.max(42, Math.min(54, (shellHeight - 132) / (SETTINGS_CATEGORY_ORDER.length - 1)))
             : 62;
-        (['audio', 'tour', 'data', 'about'] as SettingsCategory[]).forEach((key, index) => {
+        SETTINGS_CATEGORY_ORDER.forEach((key, index) => {
             const button = this.categoryButtons.get(key);
             button?.setPosition(4, buttonStartY - index * buttonGap);
             button?.getComponent(UITransform)?.setContentSize(navWidth - 24, 50);
@@ -710,6 +754,13 @@ export class SettingsOverlay extends Component {
             rowX,
             firstRowY - rowGap - 36 - audioNoteGap - audioNoteHeight * 0.5,
         );
+        const surveyNote = this.categoryPanels.get('survey')?.getChildByName('SettingsSurveyNote');
+        const surveyNoteHeight = shortLayout ? 38 : 46;
+        surveyNote?.getComponent(UITransform)?.setContentSize(rowWidth, surveyNoteHeight);
+        surveyNote?.setPosition(
+            rowX,
+            firstRowY - 36 - (shortLayout ? 14 : 20) - surveyNoteHeight * 0.5,
+        );
         const aboutName = this.categoryPanels.get('about')?.getChildByName('SettingsAboutName');
         const aboutDetail = this.categoryPanels.get('about')?.getChildByName('SettingsAboutDetail');
         aboutName?.getComponent(UITransform)?.setContentSize(rowWidth, 50);
@@ -721,6 +772,7 @@ export class SettingsOverlay extends Component {
         aboutDetail?.getComponent(UITransform)?.setContentSize(rowWidth, aboutDetailHeight);
         aboutDetail?.setPosition(rowX, firstRowY - 31 - aboutDetailHeight * 0.5);
         this.layoutConfirmation();
+        this.surveyQuestionnaire?.layout(visibleSize.width, visibleSize.height);
     }
 
     private drawHeaderOrnament(contentWidth: number, shellHeight: number): void {
