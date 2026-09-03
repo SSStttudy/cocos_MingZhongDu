@@ -253,10 +253,13 @@ function hydrateSceneGroup(group, sceneId) {
         node.destroy();
     }
     if (sourceScene.perspective) {
-        const calibration = ensurePerspectiveCalibration(sceneId);
+        const hadNear = Boolean(group.getChildByName(PERSPECTIVE_NEAR_NAME));
+        const hadHorizon = Boolean(group.getChildByName(PERSPECTIVE_HORIZON_NAME));
+        // Hydration already owns this group. Do not re-enter ensureSceneGroup.
+        ensurePerspectiveCalibrationInGroup(group, sceneId);
         const near = group.getChildByName(PERSPECTIVE_NEAR_NAME);
         const horizon = group.getChildByName(PERSPECTIVE_HORIZON_NAME);
-        if (near) {
+        if (near && !hadNear) {
             const visualHeight = Number(sourceScene.perspective.nearVisualHeight) || 400;
             near.setScale(1, visualHeight / 400, 1);
             near.setPosition(
@@ -265,7 +268,10 @@ function hydrateSceneGroup(group, sceneId) {
                 0,
             );
         }
-        if (horizon) horizon.setPosition(0, Number(sourceScene.perspective.horizonY) || 80, 0);
+        if (horizon && !hadHorizon) {
+            const horizonY = Number(sourceScene.perspective.horizonY);
+            horizon.setPosition(0, Number.isFinite(horizonY) ? horizonY : 80, 0);
+        }
         const keepY = Number(sourceScene.perspective.keepY);
         if (Number.isFinite(keepY)) {
             let keep = group.getChildByName(PERSPECTIVE_KEEP_NAME);
@@ -274,11 +280,10 @@ function hydrateSceneGroup(group, sceneId) {
                 keep = new Node(PERSPECTIVE_KEEP_NAME);
                 keep.layer = Layers.Enum.UI_2D;
                 group.addChild(keep);
+                keep.setPosition(0, keepY, 0);
             }
-            keep.setPosition(0, keepY, 0);
             drawPerspectiveKeep(keep, sceneId);
         }
-        void calibration;
     }
 }
 
@@ -350,8 +355,12 @@ function readPerspectiveCalibration(group) {
 }
 
 function ensurePerspectiveCalibration(sceneId) {
-    const { Node, Layers } = getEngine();
     const group = ensureSceneGroup(sceneId);
+    return ensurePerspectiveCalibrationInGroup(group, sceneId);
+}
+
+function ensurePerspectiveCalibrationInGroup(group, sceneId) {
+    const { Node, Layers } = getEngine();
     let near = group.getChildByName(PERSPECTIVE_NEAR_NAME);
     if (!near) {
         near = new Node(PERSPECTIVE_NEAR_NAME);
