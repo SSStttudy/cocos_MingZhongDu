@@ -24,6 +24,7 @@ export class TourGuideOverlay {
     private objectiveCard: Node;
     private objectiveTitle: Label;
     private objectiveText: Label;
+    private objectiveSupplement: Label;
     private speechGroup: Node;
     private speechBubble: Node;
     private speechLabel: Label;
@@ -55,11 +56,13 @@ export class TourGuideOverlay {
         this.root = this.createNode('TourGuideUI', host);
         this.root.addComponent(UITransform);
 
-        this.objectiveCard = this.createPanel('TourObjectiveCard', this.root, 360, 96, 16);
+        this.objectiveCard = this.createPanel('TourObjectiveCard', this.root, 360, 122, 16);
         this.objectiveTitle = this.createLabel('当前目标', 16, GOLD, this.objectiveCard, 318, 28);
-        this.objectiveTitle.node.setPosition(0, 25);
-        this.objectiveText = this.createLabel('', 20, CREAM, this.objectiveCard, 318, 48);
-        this.objectiveText.node.setPosition(0, -13);
+        this.objectiveTitle.node.setPosition(0, 37);
+        this.objectiveText = this.createLabel('', 20, CREAM, this.objectiveCard, 318, 46);
+        this.objectiveText.node.setPosition(0, 3);
+        this.objectiveSupplement = this.createLabel('', 15, GOLD, this.objectiveCard, 318, 24);
+        this.objectiveSupplement.node.setPosition(0, -40);
 
         this.minimizeButton = this.createRoundButton('TourMinimizeButton', '－', this.root, 42);
         this.minimizeButton.on(Node.EventType.TOUCH_END, this.toggleMinimized, this);
@@ -123,8 +126,9 @@ export class TourGuideOverlay {
         this.lastWidth = visible.width;
         this.lastHeight = visible.height;
         this.root.getComponent(UITransform)!.setContentSize(visible);
-        this.objectiveCard.setPosition(-visible.width * 0.5 + 205, visible.height * 0.5 - 70);
-        this.minimizeButton.setPosition(-visible.width * 0.5 + 400, visible.height * 0.5 - 48);
+        // 左上角预留设置入口；导览卡从其右侧开始，避免点击区域重叠。
+        this.objectiveCard.setPosition(-visible.width * 0.5 + 258, visible.height * 0.5 - 83);
+        this.minimizeButton.setPosition(-visible.width * 0.5 + 453, visible.height * 0.5 - 48);
         // 右下角留给固定交互与疾行按键。
         this.speechGroup.setPosition(visible.width * 0.5 - 270, -visible.height * 0.5 + 250);
         this.contextActionButton.setPosition(0, -visible.height * 0.5 + 72);
@@ -151,6 +155,11 @@ export class TourGuideOverlay {
         this.objectiveTitle.string = title || '自由探索';
         this.objectiveText.string = objective || '主线已完成，可自由游览';
         if (speech) this.setSpeech(speech);
+    }
+
+    setObjectiveSupplement(text: string): void {
+        this.objectiveSupplement.string = text;
+        this.objectiveSupplement.node.active = text.length > 0;
     }
 
     setSpeech(

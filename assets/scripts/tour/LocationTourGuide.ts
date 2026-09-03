@@ -117,6 +117,9 @@ export class LocationTourGuide extends Component {
 
     setSuspended(suspended: boolean): void {
         this.suspended = suspended;
+        if (this.overlay) this.overlay.root.active = !suspended && this.hintsVisible;
+        if (this.marker) this.marker.active = !suspended && this.hintsVisible;
+        if (this.routeDots) this.routeDots.active = !suspended && this.hintsVisible;
         if (!suspended && this.hintsVisible) {
             this.refreshObjective(false);
             this.updateTarget();
@@ -125,9 +128,10 @@ export class LocationTourGuide extends Component {
 
     private applyHintsVisible(visible: boolean): void {
         this.hintsVisible = visible;
+        if (this.overlay) this.overlay.root.active = visible && !this.suspended;
         this.overlay?.setHintsVisible(visible);
-        if (this.marker) this.marker.active = visible;
-        if (this.routeDots) this.routeDots.active = visible;
+        if (this.marker) this.marker.active = visible && !this.suspended;
+        if (this.routeDots) this.routeDots.active = visible && !this.suspended;
         if (visible && !this.suspended) {
             this.refreshObjective(false);
             this.updateTarget();
@@ -339,14 +343,19 @@ export class LocationTourGuide extends Component {
         if (!this.host || !this.overlay || this.completing || this.overlay.isCheckpointOpen()) return;
         const locationId = this.host.getTourLocationId();
         const sceneId = this.host.getTourSceneId();
+        const progress = TourFeatureBridge.getFragmentProgress(locationId, sceneId);
+        this.overlay.setObjectiveSupplement(
+            progress && progress.total > 0
+                ? `碎片任务 · 这里有碎片，用放大镜找找  ${progress.collected}/${progress.total}`
+                : '',
+        );
         const sceneKey = `${locationId}/${sceneId}`;
         const narrationId = `fragment-hint:${sceneKey}`;
         if (TourProgressStore.hasShownNarration(narrationId)) return;
-        const progress = TourFeatureBridge.getFragmentProgress(locationId, sceneId);
         if (!progress || progress.total <= 0 || progress.collected >= progress.total) return;
         if (this.showTransientSpeech(
             narrationId,
-            '这个场景似乎藏着一些线索，拖动放大镜仔细找找看。',
+            '这里有碎片，用放大镜找找。拖住右侧放大镜的木柄，在画面中慢慢移动。',
             20,
             6,
         )) {
@@ -409,13 +418,14 @@ export class LocationTourGuide extends Component {
         if (!this.matchesCurrentScene(event)) return;
         const id = `fragment-discovered:${event.locationId}/${event.sceneId}`;
         if (TourProgressStore.hasShownNarration(id)) return;
-        if (this.showTransientSpeech(id, '这里有些不寻常，试着用放大镜找找看。', 20, 5)) {
+        if (this.showTransientSpeech(id, '这里有碎片，用放大镜找找。拖住右侧放大镜的木柄，在画面中慢慢移动。', 20, 6)) {
             TourProgressStore.markNarrationShown(id);
         }
     };
 
     private readonly onFragmentCollected = (event: TourFragmentEvent): void => {
         if (!this.matchesCurrentScene(event)) return;
+        this.updateFragmentHint();
         TourProgressStore.markTutorialCompleted('fragment-search');
         const progress = TourFeatureBridge.getFragmentProgress(event.locationId, event.sceneId);
         const collected = event.collected ?? progress?.collected;

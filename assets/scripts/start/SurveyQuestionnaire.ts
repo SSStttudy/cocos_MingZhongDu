@@ -559,7 +559,9 @@ export class SurveyQuestionnaire extends Component {
         title.node.setPosition(0, 68);
         title.isBold = true;
         const detail = this.makeLabel(
-            submitted ? '您的匿名答卷已保存到当前设备。' : '本次未提交任何答案。',
+            submitted
+                ? '您的匿名答卷已保存，并会自动同步到问卷后台；网络暂时不可用时将在下次打开时重试。'
+                : '本次未提交任何答案。',
             18,
             INK_MUTED,
             this.content,

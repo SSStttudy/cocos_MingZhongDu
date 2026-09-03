@@ -49,7 +49,7 @@
           "handlerId": "location-info",
           "prompt": "认识王剑英与明中都研究",
           "triggerMode": "button",
-          "payload": "{\"kicker\":\"遗址研究者 · 王剑英\",\"title\":\"从田野走近明中都\",\"body\":\"王剑英长期参与明中都遗址的田野调查、测绘与研究。照片记录了他观察石础、调查内金水河遗迹的工作场景，也让今天的游客看到：对一处遗址的认识并非一次完成，而是在现场踏查、资料比对和持续保护中逐步清晰。\",\"images\":[{\"path\":\"interactions/visitor-center/wang-portrait\",\"caption\":\"王剑英先生像\"},{\"path\":\"interactions/visitor-center/wang-stone-base\",\"caption\":\"王剑英在遗址现场观察大型石础（历史资料照片）\"},{\"path\":\"interactions/visitor-center/wang-inner-golden-water-river\",\"caption\":\"王剑英在内金水河遗迹调查现场（历史资料照片）\"}]}",
+          "payload": "{\"kicker\":\"遗址研究者 · 王剑英\",\"title\":\"从田野走近明中都\",\"body\":\"王剑英长期参与明中都遗址的田野调查、测绘与研究。照片记录了他观察大型石础、踏查内金水河遗迹的工作场景。研究者需要把散落在田野中的砖石、台基、水系和地形逐项记录，再与历史资料和历次调查成果相互比对，才能逐渐辨认城址边界与空间格局。外院雕像纪念的不只是一位研究者，也提示我们：今天对明中都的认识来自多代人的持续踏查、讨论与保护。翻看三张照片，可以留意人物与遗存的尺度关系，以及田野环境如何成为研究的一部分。\",\"images\":[{\"path\":\"interactions/visitor-center/wang-portrait\",\"caption\":\"王剑英先生像\"},{\"path\":\"interactions/visitor-center/wang-stone-base\",\"caption\":\"王剑英在遗址现场观察大型石础（历史资料照片）\"},{\"path\":\"interactions/visitor-center/wang-inner-golden-water-river\",\"caption\":\"王剑英在内金水河遗迹调查现场（历史资料照片）\"}]}",
           "targetSceneId": "",
           "targetSpawnId": "",
           "overworldEntryId": "",
@@ -285,6 +285,17 @@
           ]
         }
       ],
+      "occlusionLines": [
+        {
+          "id": "wang-statue",
+          "enabled": true,
+          "foregroundAsset": "exterior-wang-statue-foreground",
+          "points": [
+            { "x": 0.035, "y": 0.57 },
+            { "x": 0.285, "y": 0.57 }
+          ]
+        }
+      ],
       "perspective": {
         "nearY": -480,
         "nearVisualHeight": 400,
@@ -370,7 +381,7 @@
           "handlerId": "location-info",
           "prompt": "从图像理解明中都格局",
           "triggerMode": "button",
-          "payload": "{\"kicker\":\"从规划图读懂城址\",\"title\":\"明中都：遗址与整体格局\",\"body\":\"明中都遗址范围广，宫城、城门、水系与礼制建筑分布在今天的城镇和田野之间。保护规划效果图将分散遗存放回整体空间；方丘遗址卫星示意图则标出其与宫殿区、道路和周边地貌的关系。观看这类图像时，应把规划设想、遗址现状与建筑复原区分开来。\",\"images\":[{\"path\":\"interactions/visitor-center/heritage-park-plan\",\"caption\":\"明中都遗址公园保护规划效果图（规划表达，不等同于历史复原）\"},{\"path\":\"interactions/visitor-center/fangqiu-site-plan\",\"caption\":\"明中都方丘遗址卫星示意图（图中标注用于辅助定位）\"}]}",
+          "payload": "{\"kicker\":\"从规划图读懂城址\",\"title\":\"明中都：遗址与整体格局\",\"body\":\"明中都遗址范围广，宫城、城门、水系与礼制建筑分布在今天的城镇和田野之间，只看单个遗迹很难理解它们原有的联系。保护规划效果图把分散遗存重新放回整体空间，方丘遗址卫星示意图则帮助定位其与宫殿区、道路和周边地貌的关系。阅读时可以先找中轴、城垣和水系，再比较各处遗址的方向与距离。也要注意区分三种信息：今天仍可见的遗存、依据资料作出的空间推测，以及面向未来的保护规划。图像可以帮助建立整体认识，但规划设想和艺术复原不能替代考古证据。\",\"images\":[{\"path\":\"interactions/visitor-center/heritage-park-plan\",\"caption\":\"明中都遗址公园保护规划效果图（规划表达，不等同于历史复原）\"},{\"path\":\"interactions/visitor-center/fangqiu-site-plan\",\"caption\":\"明中都方丘遗址卫星示意图（图中标注用于辅助定位）\"}]}",
           "targetSceneId": "",
           "targetSpawnId": "",
           "overworldEntryId": "",
@@ -475,6 +486,26 @@
             { "x": 0.425, "y": 0.79 },
             { "x": 0.425, "y": 0.87 },
             { "x": 0.335, "y": 0.87 }
+          ]
+        }
+      ],
+      "occlusionLines": [
+        {
+          "id": "sand-table-front",
+          "enabled": true,
+          "foregroundAsset": "interior-sand-table-foreground",
+          "points": [
+            { "x": 0.06, "y": 0.67 },
+            { "x": 0.49, "y": 0.82 }
+          ]
+        },
+        {
+          "id": "sand-table-right",
+          "enabled": true,
+          "foregroundAsset": "interior-sand-table-foreground",
+          "points": [
+            { "x": 0.49, "y": 0.82 },
+            { "x": 0.66, "y": 0.61 }
           ]
         }
       ],

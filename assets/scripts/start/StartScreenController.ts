@@ -23,6 +23,7 @@ import { LocationTransitionState } from '../location/LocationTransitionState';
 import { TourProgressStore } from '../tour/TourProgressStore';
 import { getLocationCocosSceneName } from '../tour/TourConfig';
 import { SettingsOverlay } from './SettingsOverlay';
+import { SurveyResponseStore } from './SurveyResponseStore';
 
 const { ccclass, executeInEditMode, property } = _decorator;
 
@@ -57,7 +58,6 @@ export class StartScreenController extends Component {
     private restartPanel: Node | null = null;
     private startButton: Node | null = null;
     private restartButton: Node | null = null;
-    private avatarButton: Node | null = null;
     private scrollTransition: Node | null = null;
     private scrollLeft: Node | null = null;
     private scrollRight: Node | null = null;
@@ -74,6 +74,24 @@ export class StartScreenController extends Component {
             this.loadBackground();
         }
         this.layout(true);
+        this.preloadLikelyNextScene();
+    }
+
+    /** 玩家停留在首页时并行预热下一场景，减少点击开始后的等待。 */
+    private preloadLikelyNextScene(): void {
+        if (EDITOR) return;
+        let sceneName = 'Overworld';
+        if (this.resumeExistingTour) {
+            const anchor = TourProgressStore.load().resumeAnchor;
+            if (anchor.kind === 'location') {
+                sceneName = getLocationCocosSceneName(anchor.locationId);
+            }
+        }
+        director.preloadScene(sceneName, undefined, (error) => {
+            if (error && this.node.isValid) {
+                console.warn(`[StartScreen] ${sceneName} 后台预加载失败，将在进入时重试。`, error);
+            }
+        });
     }
 
     update(): void {
@@ -128,7 +146,6 @@ export class StartScreenController extends Component {
             this.mainActions,
         );
         this.restartButton.active = this.resumeExistingTour;
-        this.avatarButton = this.createButton('AvatarWorkshopButton', '创建自己的角色', 274, 50, false, this.mainActions);
         const settingsButton = this.createButton('SettingsButton', '设置', 274, 50, false, this.mainActions);
         this.layoutActionButtons();
 
@@ -139,11 +156,12 @@ export class StartScreenController extends Component {
         this.createScrollTransition();
 
         if (!EDITOR) {
+            // 启动时补传上一次离线保存的答卷，网页与微信小游戏共用同一后台。
+            void SurveyResponseStore.syncPending();
             this.settingsOverlay = this.node.getComponent(SettingsOverlay) ?? this.node.addComponent(SettingsOverlay);
             this.settingsOverlay.initialize(this.screenRoot);
             this.startButton.on(Node.EventType.TOUCH_END, this.startGame, this);
             this.restartButton.on(Node.EventType.TOUCH_END, this.openRestartPanel, this);
-            this.avatarButton.on(Node.EventType.TOUCH_END, this.openAvatarWorkshop, this);
             settingsButton.on(Node.EventType.TOUCH_END, this.openSettings, this);
         }
     }
@@ -467,35 +485,15 @@ export class StartScreenController extends Component {
         this.settingsOverlay?.open();
     }
 
-    private openAvatarWorkshop(event?: EventTouch): void {
-        this.stopTouch(event);
-        if (this.starting || EDITOR) return;
-        const accepted = director.loadScene('AvatarWorkshop', (error) => {
-            if (error) {
-                console.error('[StartScreen] 角色工坊场景加载失败。', error);
-                this.starting = false;
-            }
-        });
-        if (!accepted) {
-            this.starting = false;
-            console.error('[StartScreen] AvatarWorkshop 尚未加入当前构建场景。');
-            return;
-        }
-        // 防止用户在异步加载期间重复触发场景切换。
-        this.starting = true;
-    }
-
     private layoutActionButtons(): void {
         const settingsButton = this.mainActions?.getChildByName('SettingsButton');
         if (this.resumeExistingTour) {
-            this.startButton?.setPosition(0, 84);
-            this.restartButton?.setPosition(0, 22);
-            this.avatarButton?.setPosition(0, -38);
-            settingsButton?.setPosition(0, -96);
+            this.startButton?.setPosition(0, 62);
+            this.restartButton?.setPosition(0, 0);
+            settingsButton?.setPosition(0, -60);
         } else {
-            this.startButton?.setPosition(0, 56);
-            this.avatarButton?.setPosition(0, -8);
-            settingsButton?.setPosition(0, -68);
+            this.startButton?.setPosition(0, 34);
+            settingsButton?.setPosition(0, -34);
         }
     }
 

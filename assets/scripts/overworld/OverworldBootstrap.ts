@@ -33,6 +33,7 @@ import {
     OverworldRouteSegment,
 } from './OverworldConfig';
 import { LocationTransitionState } from '../location/LocationTransitionState';
+import { getLocationConfig } from '../location/LocationConfig';
 import { DirectionalWalkAnimator } from '../player/DirectionalWalkAnimator';
 import {
     OverworldTourEntranceContext,
@@ -113,6 +114,8 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     private entryPoints: ResolvedEntryPoint[] = [];
     private activeEntryPoint: ResolvedEntryPoint | null = null;
     private activeEntryIds = new Set<string>();
+    private activeEntranceIds = new Set<string>();
+    private sceneLoadInProgress = false;
     private tourGuide: OverworldTourGuide | null = null;
     private lastEditorCalibrationHash = '';
     private lastCanvasWidth = 0;
@@ -138,6 +141,7 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         this.settingsOverlay.initialize(this.node, {
             onVisibilityChanged: (visible) => this.setSettingsPaused(visible),
         });
+        // 固定在左上安全区，避开微信右上角胶囊和场景右上角小地图。
         this.settingsOverlay.createEntryButton(this.node);
         this.tourGuide = this.node.addComponent(OverworldTourGuide);
         this.tourGuide.initialize(this);
@@ -911,6 +915,31 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
             }
         }
         this.activeEntryIds = nextActiveIds;
+
+        // 可见圆环就是玩家对“传送区域”的认知来源。旧逻辑只在圆周与道路
+        // 的交点放置 10~16 像素隐藏触发点，玩家进入圆环中央仍可能毫无反应。
+        // 这里用编辑器里同一圆环的半径作兜底，并按接近方向选择最近入口。
+        const nextActiveEntranceIds = new Set<string>();
+        for (const entrance of OVERWORLD_ENTRANCES) {
+            const center = this.getEntrancePosition(entrance);
+            const radius = this.getEntranceRadius(entrance);
+            const distance = Vec2.distance(this.playerPosition, center);
+            if (distance > radius) continue;
+            nextActiveEntranceIds.add(entrance.id);
+            if (this.activeEntranceIds.has(entrance.id)) continue;
+            const nearest = this.entryPoints
+                .filter((point) => point.entrance.id === entrance.id)
+                .sort((a, b) => (
+                    Vec2.distance(a.position, this.playerPosition)
+                    - Vec2.distance(b.position, this.playerPosition)
+                ))[0];
+            if (nearest) {
+                this.activeEntranceIds = nextActiveEntranceIds;
+                this.traverseLocation(nearest);
+                return;
+            }
+        }
+        this.activeEntranceIds = nextActiveEntranceIds;
     }
 
     private distanceToSegment(point: Vec2, start: Vec2, end: Vec2): number {
@@ -986,12 +1015,69 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
     private enterLocationFromEntry(source: ResolvedEntryPoint): boolean {
         const target = LOCATION_SCENE_ENTRIES[source.id];
         if (!target) return false;
+        if (this.sceneLoadInProgress) return true;
+        this.sceneLoadInProgress = true;
+        this.pausedByEntrance = true;
+        this.speedBoostHeld = false;
+        this.joystickInput.set(0, 0);
+        this.joystickKnob?.setPosition(0, 0, 0);
         LocationTransitionState.enterLocation(
             target.locationId,
             target.sceneId,
             target.spawnId,
         );
-        director.loadScene(target.cocosScene);
+        const locationConfig = getLocationConfig(target.locationId);
+        const targetScene = locationConfig.scenes[target.sceneId];
+        const visualPaths = new Set<string>([
+            `locations/${target.locationId}/scenes/${target.sceneId}/spriteFrame`,
+        ]);
+        for (const line of targetScene?.occlusionLines ?? []) {
+            visualPaths.add(
+                `locations/${target.locationId}/scenes/${line.foregroundAsset}/spriteFrame`,
+            );
+        }
+        if (this.hintLabel) this.hintLabel.string = '正在加载场景画面…';
+        let pendingVisuals = visualPaths.size;
+        let visualsReady = pendingVisuals === 0;
+        let sceneReady = false;
+        let failed = false;
+        const enterWhenReady = (): void => {
+            if (!failed && visualsReady && sceneReady && this.node.isValid) {
+                director.loadScene(target.cocosScene);
+            }
+        };
+        for (const path of visualPaths) {
+            resources.load(path, SpriteFrame, (assetError) => {
+                if (assetError) {
+                    console.warn(`[Overworld] 场景视觉资源预加载失败，将继续进入：${path}`, assetError);
+                }
+                pendingVisuals -= 1;
+                visualsReady = pendingVisuals <= 0;
+                enterWhenReady();
+            });
+        }
+        // 场景包与当前分镜画面并行下载，避免此前“先等背景、再等场景”的串行等待。
+        director.preloadScene(
+            target.cocosScene,
+            (completed, total) => {
+                const percent = total > 0 ? Math.round(completed / total * 100) : 0;
+                if (this.hintLabel?.isValid) this.hintLabel.string = `正在进入地点… ${percent}%`;
+            },
+            (sceneError) => {
+                if (sceneError) {
+                    failed = true;
+                    console.error(`[Overworld] 地点场景加载失败：${target.cocosScene}`, sceneError);
+                    this.sceneLoadInProgress = false;
+                    this.pausedByEntrance = false;
+                    if (this.hintLabel?.isValid) {
+                        this.hintLabel.string = '加载失败，请检查网络后重新进入圆环';
+                    }
+                    return;
+                }
+                sceneReady = true;
+                enterWhenReady();
+            },
+        );
         return true;
     }
 
@@ -1047,8 +1133,9 @@ export class OverworldBootstrap extends Component implements OverworldTourHost {
         if (!force && visible.width === this.lastCanvasWidth && visible.height === this.lastCanvasHeight) return;
         this.lastCanvasWidth = visible.width;
         this.lastCanvasHeight = visible.height;
-        this.node.getChildByName('MapTitle')?.setPosition(-visible.width * 0.5 + 300, visible.height * 0.5 - 48, 0);
-        this.node.getChildByName('ControlHint')?.setPosition(-visible.width * 0.5 + 330, visible.height * 0.5 - 94, 0);
+        // 顶部标题与操作提示居中，避开左上角的主线/碎片任务卡片。
+        this.node.getChildByName('MapTitle')?.setPosition(0, visible.height * 0.5 - 48, 0);
+        this.node.getChildByName('ControlHint')?.setPosition(0, visible.height * 0.5 - 94, 0);
         this.joystick?.setPosition(-visible.width * 0.5 + 132, -visible.height * 0.5 + 132, 0);
         this.actionButtons?.setPosition(visible.width * 0.5 - 164, -visible.height * 0.5 + 122, 0);
         this.entryPanel?.setPosition(0, 0, 0);

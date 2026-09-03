@@ -1,0 +1,25 @@
+[Unit]
+Description=Ming Zhongdu feedback receiver
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/mingzhongdu-feedback
+Environment=HOST=127.0.0.1
+Environment=PORT=3102
+Environment=DATA_DIR=/var/lib/mingzhongdu-feedback
+Environment=ALLOWED_ORIGIN=https://nyasd.net
+EnvironmentFile=-/etc/mingzhongdu-feedback.env
+ExecStart=/usr/bin/node /opt/mingzhongdu-feedback/server.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/mingzhongdu-feedback
+
+[Install]
+WantedBy=multi-user.target

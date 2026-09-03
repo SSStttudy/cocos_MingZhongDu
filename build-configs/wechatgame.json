@@ -4,6 +4,11 @@
   "name": "ming-zhongdu",
   "buildPath": "project://build",
   "debug": false,
+  "md5Cache": true,
+  "mainBundleIsRemote": true,
+  "useBuiltinServer": false,
+  "server": "https://nyasd.net/mingzhongdu-wechat/",
+  "startSceneAssetBundle": true,
   "startScene": "7a238b31-8a2e-43af-b8c6-286f2b0912d9",
   "scenes": [
     {
@@ -13,10 +18,6 @@
     {
       "url": "db://assets/scenes/Overworld.scene",
       "uuid": "41840b3b-9df7-46d2-98de-090115e44a9f"
-    },
-    {
-      "url": "db://assets/scenes/AvatarWorkshop.scene",
-      "uuid": "fe7abea7-3ba8-44e9-819f-9921346e3eae"
     },
     {
       "url": "db://assets/scenes/LocationTemplate.scene",
@@ -40,6 +41,9 @@
     }
   ],
   "packages": {
-    "wechatgame": {}
+    "wechatgame": {
+      "orientation": "landscape",
+      "separateEngine": false
+    }
   }
 }

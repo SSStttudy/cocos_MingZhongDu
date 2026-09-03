@@ -217,7 +217,7 @@
           "handlerId": "location-info",
           "prompt": "查看西华门遗址",
           "triggerMode": "button",
-          "payload": "{\"kicker\":\"皇城西侧门户\",\"title\":\"西华门遗址\",\"body\":\"西华门位于明中都皇城西侧。现存门台及相连西城墙，是少数仍可直观辨认的地上遗存。考古研究认为，西华门工程在城台完成后可能未及建成门楼，遗址因此保留了工程停建状态的信息。\",\"images\":[{\"path\":\"interactions/west-gate/current-view\",\"caption\":\"西华门遗址与相连皇城西墙现状\"},{\"path\":\"interactions/west-gate/historic-xihuamen\",\"caption\":\"资料整理中保存的西华门遗址影像\"}]}",
+          "payload": "{\"kicker\":\"皇城西侧门户\",\"title\":\"西华门遗址\",\"body\":\"西华门位于明中都皇城西侧。现存门台及相连西城墙，是少数仍可直观辨认的地上遗存。考古研究认为，西华门工程在城台完成后可能未及建成门楼，因此这里不仅保存了城门位置和尺度，也留下工程停建阶段的信息。观察现状照片时，可以沿城墙寻找门洞、台基和道路之间的关系；再把它与资料影像比较，辨认环境与保护状态的变化。“天下中都”图片是依据遗址格局进行的艺术复原，用来帮助想象城门在都城空间中的作用，但不作为考古定论。三类图像并置，正是为了区分现状记录、历史资料和复原创作。\",\"images\":[{\"path\":\"interactions/west-gate/current-view\",\"caption\":\"西华门遗址与相连皇城西墙现状\"},{\"path\":\"interactions/west-gate/tianxia-zhongdu-reconstruction\",\"caption\":\"“天下中都”西华门艺术复原示意（基于遗址格局创作，不作为考古定论）\"},{\"path\":\"interactions/west-gate/historic-xihuamen\",\"caption\":\"资料整理中保存的西华门遗址影像\"}]}",
           "targetSceneId": "",
           "targetSpawnId": "",
           "overworldEntryId": "",
@@ -272,7 +272,7 @@
               "y": 0.841797
             },
             {
-              "x": 1.05,
+              "x": 0.305556,
               "y": 0.841797
             }
           ]

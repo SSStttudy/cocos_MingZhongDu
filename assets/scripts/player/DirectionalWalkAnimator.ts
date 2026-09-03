@@ -7,19 +7,11 @@ import {
     UITransform,
     Vec2,
 } from 'cc';
-import {
-    AvatarDirection,
-    AvatarManifest,
-    clearAvatarProfile,
-    loadAvatarFrame,
-    loadAvatarProfile,
-} from '../avatar/AvatarProfileStore';
 
 const { ccclass } = _decorator;
 
 export type WalkDirection = 'down' | 'up' | 'left' | 'right';
 
-const DIRECTIONS: WalkDirection[] = ['down', 'up', 'left', 'right'];
 const FRAME_COUNT = 8;
 const WALK_FRAME_INTERVAL = 1 / 6;
 const RUN_FRAME_INTERVAL = 1 / 9;
@@ -51,7 +43,7 @@ export class DirectionalWalkAnimator extends Component {
     private elapsed = 0;
     private frameIndex = 0;
     private loadVersion = 0;
-    private avatarProfile: AvatarManifest | null = null;
+    private readonly pendingDefaultDirections = new Map<WalkDirection, Promise<void>>();
 
     onLoad(): void {
         this.sprite = this.getComponent(Sprite) ?? this.addComponent(Sprite);
@@ -80,8 +72,7 @@ export class DirectionalWalkAnimator extends Component {
     setDisplaySize(width: number, height: number): void {
         const transform = this.getComponent(UITransform) ?? this.addComponent(UITransform);
         transform.setContentSize(width, height);
-        const canvas = this.avatarProfile?.canvas;
-        this.applyFeetAnchor(canvas?.feetY ?? 480, canvas?.height ?? 512);
+        this.applyFeetAnchor(480, 512);
     }
 
     setMovement(
@@ -97,6 +88,7 @@ export class DirectionalWalkAnimator extends Component {
                 this.direction = nextDirection;
                 this.frameIndex = 0;
                 this.elapsed = 0;
+                this.ensureDefaultDirection(nextDirection);
             }
         }
         if (actuallyMoving !== this.moving) {
@@ -119,60 +111,62 @@ export class DirectionalWalkAnimator extends Component {
         this.applyCurrentFrame();
     }
 
-    /** 角色工坊完成任务后，可由常驻玩家节点调用以立即重新读取角色。 */
-    reloadAvatarProfile(): void {
-        this.walkFrames.clear();
-        this.runFrames.clear();
-        this.idleFrames.clear();
-        this.frameIndex = 0;
-        this.elapsed = 0;
-        void this.loadFrames();
-    }
-
     private async loadFrames(): Promise<void> {
         const version = ++this.loadVersion;
-        this.avatarProfile = loadAvatarProfile();
         try {
-            const loaded = await Promise.all(DIRECTIONS.map(async (direction) => {
-                const result = this.avatarProfile
-                    ? await this.loadProfileDirection(this.avatarProfile, direction)
-                    : await this.loadDefaultDirection(direction);
-                return [direction, ...result] as const;
-            }));
-            if (version !== this.loadVersion || !this.isValid) return;
-            for (const [direction, walk, run, idle] of loaded) {
-                this.walkFrames.set(direction, walk);
-                this.runFrames.set(direction, run);
-                this.idleFrames.set(direction, idle);
-            }
-            const canvas = this.avatarProfile?.canvas;
-            this.applyFeetAnchor(canvas?.feetY ?? 480, canvas?.height ?? 512);
-            this.applyCurrentFrame();
+            // 冷启动时先加载一张正面待机图，避免必须等待整套 68 帧后角色才出现。
+            // 默认角色只加载当前方向；其余方向在玩家首次使用时按需加载。
+            await this.loadDefaultDirectionProgressively('down', version);
         } catch (error) {
-            if (!this.avatarProfile) {
-                console.error('[DirectionalWalkAnimator] 默认角色序列帧加载失败。', error);
-                return;
-            }
-            console.warn('[DirectionalWalkAnimator] 自定义角色不可用，已自动恢复默认角色。', error);
-            clearAvatarProfile();
-            this.avatarProfile = null;
-            if (version === this.loadVersion) void this.loadFrames();
+            console.error('[DirectionalWalkAnimator] 默认角色序列帧加载失败。', error);
         }
     }
 
-    private async loadProfileDirection(
-        profile: AvatarManifest,
-        direction: AvatarDirection,
-    ): Promise<[SpriteFrame[], SpriteFrame[], SpriteFrame]> {
-        const walkLocators = profile.walk[direction];
-        const runLocators = profile.run?.[direction] ?? walkLocators;
-        const idleLocator = profile.idle[direction];
-        const [walk, run, idle] = await Promise.all([
-            Promise.all(walkLocators.map(loadAvatarFrame)),
-            Promise.all(runLocators.map(loadAvatarFrame)),
-            loadAvatarFrame(idleLocator),
-        ]);
-        return [walk, run, idle];
+    private ensureDefaultDirection(direction: WalkDirection): void {
+        if (this.walkFrames.get(direction)?.length || this.pendingDefaultDirections.has(direction)) return;
+        const version = this.loadVersion;
+        const pending = this.loadDefaultDirectionProgressively(direction, version)
+            .catch((error) => {
+                if (version === this.loadVersion) {
+                    console.error(`[DirectionalWalkAnimator] ${direction} 方向序列加载失败。`, error);
+                }
+            });
+        this.pendingDefaultDirections.set(direction, pending);
+        void pending.then(() => this.pendingDefaultDirections.delete(direction));
+    }
+
+    private async loadDefaultDirectionProgressively(
+        direction: WalkDirection,
+        version: number,
+    ): Promise<void> {
+        const idle = await this.loadSpriteFrame(
+            `${IDLE_RESOURCE_ROOT}/${IDLE_RESOURCE_NAME[direction]}/spriteFrame`,
+        );
+        if (version !== this.loadVersion || !this.isValid) return;
+        this.idleFrames.set(direction, idle);
+        this.walkFrames.set(direction, [idle]);
+        this.runFrames.set(direction, [idle]);
+        if (this.direction === direction) this.applyCurrentFrame();
+
+        // 微信端不再等待整套 8 帧行走 + 8 帧奔跑全部下载完才开始动画。
+        // 先取得两张行走帧形成最小循环，剩余帧继续在后台并行补齐。
+        const quickWalk = await Promise.all([0, 1].map((index) => {
+            const frameNumber = `0${index}`;
+            return this.loadSpriteFrame(
+                `${WALK_RESOURCE_ROOT}/${direction}/${direction}-${frameNumber}/spriteFrame`,
+            );
+        }));
+        if (version !== this.loadVersion || !this.isValid) return;
+        this.walkFrames.set(direction, quickWalk);
+        this.runFrames.set(direction, quickWalk);
+        if (this.direction === direction) this.applyCurrentFrame();
+
+        const [walk, run, loadedIdle] = await this.loadDefaultDirection(direction);
+        if (version !== this.loadVersion || !this.isValid) return;
+        this.walkFrames.set(direction, walk);
+        this.runFrames.set(direction, run);
+        this.idleFrames.set(direction, loadedIdle);
+        if (this.direction === direction) this.applyCurrentFrame();
     }
 
     private async loadDefaultDirection(

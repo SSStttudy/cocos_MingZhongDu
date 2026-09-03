@@ -123,7 +123,7 @@
   {
     "__type__": "cc.Node",
     "_name": "PerspectiveCalibration",
-    "_objFlags": 0,
+    "_objFlags": 16,
     "__editorExtras__": {},
     "_parent": {
       "__id__": 2

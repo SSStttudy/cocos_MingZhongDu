@@ -164,7 +164,7 @@ export class SettingsOverlay extends Component {
     createEntryButton(parent: Node, topOffset = 0): Node {
         const node = new Node('SettingsEntryButton');
         node.layer = Layers.Enum.UI_2D;
-        node.addComponent(UITransform).setContentSize(56, 56);
+        node.addComponent(UITransform).setContentSize(48, 48);
         const graphics = node.addComponent(Graphics);
         this.drawSettingsGearButton(graphics);
         this.bindPressFeedback(node);
@@ -392,7 +392,7 @@ export class SettingsOverlay extends Component {
             false,
         );
         const note = SettingsOverlay.makeLabel(
-            '匿名填写，不收集姓名或联系方式。答卷将保存在当前设备。',
+            '匿名填写，不收集姓名或联系方式。答卷会保存在设备并同步到统一后台。',
             14,
             INK_MUTED,
             panel,
@@ -614,10 +614,10 @@ export class SettingsOverlay extends Component {
         const safe = this.getSafeArea(visibleSize.width, visibleSize.height);
         this.entryButtons.forEach(({ node, topOffset }) => {
             const size = node.getComponent(UITransform)?.contentSize;
-            const width = size?.width ?? 56;
-            const height = size?.height ?? 56;
+            const width = size?.width ?? 48;
+            const height = size?.height ?? 48;
             node.setPosition(
-                safe.centerX + safe.width * 0.5 - 20 - width * 0.5,
+                safe.centerX - safe.width * 0.5 + 20 + width * 0.5,
                 safe.centerY + safe.height * 0.5 - 20 - height * 0.5 - topOffset,
             );
         });
@@ -626,13 +626,15 @@ export class SettingsOverlay extends Component {
         const dimGraphics = this.dim?.getComponent(Graphics);
         if (dimGraphics) {
             dimGraphics.clear();
-            dimGraphics.fillColor = new Color(DEEP_RED.r, DEEP_RED.g, DEEP_RED.b, 225);
+            // 保留场景轮廓，避免玩家把设置页误认为已经离开地图。
+            dimGraphics.fillColor = new Color(DEEP_RED.r, DEEP_RED.g, DEEP_RED.b, 138);
             dimGraphics.rect(-visibleSize.width * 0.5, -visibleSize.height * 0.5, visibleSize.width, visibleSize.height);
             dimGraphics.fill();
         }
 
-        const shellWidth = Math.max(1, Math.min(1120, safe.width - Math.min(40, safe.width * 0.08)));
-        const shellHeight = Math.max(1, Math.min(610, safe.height - Math.min(32, safe.height * 0.1)));
+        // 横屏游玩时使用紧凑面板，给地图保留明确的可见边界。
+        const shellWidth = Math.max(1, Math.min(920, safe.width - Math.min(56, safe.width * 0.12)));
+        const shellHeight = Math.max(1, Math.min(540, safe.height - Math.min(48, safe.height * 0.14)));
         const navWidth = shellWidth < 760
             ? Math.max(112, Math.min(150, shellWidth * 0.28))
             : 190;

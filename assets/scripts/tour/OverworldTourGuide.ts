@@ -97,13 +97,20 @@ export class OverworldTourGuide extends Component {
 
     setSuspended(suspended: boolean): void {
         this.suspended = suspended;
+        if (this.overlay) this.overlay.root.active = !suspended && this.hintsVisible;
+        if (this.dotsNode) this.dotsNode.active = !suspended && this.hintsVisible;
+        if (!suspended && this.hintsVisible) {
+            this.refreshObjective(false);
+            this.redrawRouteDots(true);
+        }
     }
 
     private applyHintsVisible(visible: boolean): void {
         this.hintsVisible = visible;
+        if (this.overlay) this.overlay.root.active = visible && !this.suspended;
         this.overlay?.setHintsVisible(visible);
-        if (this.dotsNode) this.dotsNode.active = visible;
-        if (visible) this.redrawRouteDots(true);
+        if (this.dotsNode) this.dotsNode.active = visible && !this.suspended;
+        if (visible && !this.suspended) this.redrawRouteDots(true);
     }
 
     private refreshObjective(initial: boolean): void {

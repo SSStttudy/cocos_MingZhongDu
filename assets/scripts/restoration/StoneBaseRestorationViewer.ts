@@ -225,6 +225,7 @@ export class StoneBaseRestorationViewer extends Component {
             locationId: this.locationId,
             sceneId: this.sceneId,
         });
+        this.emitLensPosition();
     }
 
     private updateFallbackVisibility(): void {
@@ -302,5 +303,16 @@ export class StoneBaseRestorationViewer extends Component {
         const y = Math.max(-visible.height * 0.5 - overflow, Math.min(visible.height * 0.5 + overflow, desiredY));
         this.lens.setPosition(x, y, 0);
         this.alignMagnifiedImage();
+        this.emitLensPosition();
+    }
+
+    private emitLensPosition(): void {
+        if (!this.dragging) return;
+        this.node.emit(TOUR_FEATURE_EVENTS.magnifierMoved, {
+            locationId: this.locationId,
+            sceneId: this.sceneId,
+            position: { x: this.lens.position.x, y: this.lens.position.y },
+            radius: Math.max(48, this.radius - 10),
+        });
     }
 }

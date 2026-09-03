@@ -12,15 +12,20 @@ import {
     Size,
     Sprite,
     SpriteFrame,
+    tween,
+    UIOpacity,
     UITransform,
     Vec2,
     Vec3,
     view,
 } from 'cc';
+import { LocationInteractionRegistry } from '../location/LocationInteractionRegistry';
 import {
-    LocationInteractionContext,
-    LocationInteractionRegistry,
-} from '../location/LocationInteractionRegistry';
+    TOUR_FEATURE_EVENTS,
+    TourFragmentProvider,
+    TourFragmentSceneProgress,
+    TourFeatureBridge,
+} from '../tour/TourFeatureBridge';
 import {
     FRAGMENT_DEFINITIONS,
     FragmentCollectionState,
@@ -44,50 +49,44 @@ type CollectionHost = Component & {
     getTourWorld: () => Node;
     getTourLocationId: () => string;
     getTourSceneId: () => string;
-    getTourPlayerPosition: () => Vec2;
-    getTourPerspectiveScale: (y: number) => number;
     getCollectionTargets: () => CollectionTarget[];
+    setTourPaused: (paused: boolean) => void;
 };
 
-type MarkerView = {
-    node: Node;
-    baseY: number;
-    baseScale: number;
-    target: CollectionTarget;
+type MagnifierMoveEvent = {
+    locationId?: string;
+    sceneId?: string;
+    position?: { x?: number; y?: number };
+    radius?: number;
 };
 
+/**
+ * collect-fragment 多边形只保存可视化可调的搜索点；碎片由放大镜扫过拾取，
+ * 不再占用普通 F 交互，也不在世界中绘制破坏画面的巨大箭头。
+ */
 @ccclass('FragmentCollectionController')
-export class FragmentCollectionController extends Component {
-    private hud!: Node;
-    private hudLabel!: Label;
+export class FragmentCollectionController extends Component implements TourFragmentProvider {
     private toast!: Node;
     private toastLabel!: Label;
-    private prompt!: Node;
-    private promptLabel!: Label;
     private overlay!: Node;
     private puzzleImage!: Node;
     private puzzleStatus!: Label;
     private assembleButton!: Node;
     private assembleLabel!: Label;
+    private achievementBanner!: Node;
     private state: FragmentCollectionState = FragmentCollectionStore.load();
     private masterFrame: SpriteFrame | null = null;
     private toastVersion = 0;
-    private activePromptRegionId = '';
-    private markerLayer: Node | null = null;
-    private markerViews: MarkerView[] = [];
-    private objectiveTarget: CollectionTarget | null = null;
-    private markerElapsed = 0;
-    private readonly shownSceneGuides = new Set<string>();
+    private sceneTargets: CollectionTarget[] = [];
+    private readonly announcedScenes = new Set<string>();
 
     onLoad(): void {
-        LocationInteractionRegistry.register('collect-fragment', this.collectFragment);
         LocationInteractionRegistry.register('assemble-fragments', this.openPuzzle);
-        this.node.on('location-interaction-enter', this.onInteractionEnter, this);
-        this.node.on('location-interaction-exit', this.onInteractionExit, this);
+        TourFeatureBridge.registerFragmentProvider(this);
         this.node.on('location-runtime-scene-rendered', this.onRuntimeSceneRendered, this);
+        this.node.on(TOUR_FEATURE_EVENTS.magnifierMoved, this.onMagnifierMoved, this);
         this.createUi();
-        this.refreshHud();
-        this.scheduleOnce(this.rebuildMarkers, 0);
+        this.scheduleOnce(this.refreshSceneTargets, 0);
         resources.load(PUZZLE_RESOURCE, SpriteFrame, (error, frame) => {
             if (error || !frame) {
                 console.warn('[FragmentCollection] 拼图资源加载失败。', error);
@@ -99,75 +98,140 @@ export class FragmentCollectionController extends Component {
     }
 
     onDestroy(): void {
-        LocationInteractionRegistry.unregister('collect-fragment');
         LocationInteractionRegistry.unregister('assemble-fragments');
-        this.node.off('location-interaction-enter', this.onInteractionEnter, this);
-        this.node.off('location-interaction-exit', this.onInteractionExit, this);
+        TourFeatureBridge.unregisterFragmentProvider(this);
         this.node.off('location-runtime-scene-rendered', this.onRuntimeSceneRendered, this);
+        this.node.off(TOUR_FEATURE_EVENTS.magnifierMoved, this.onMagnifierMoved, this);
     }
 
-    update(deltaTime: number): void {
+    update(): void {
         const size = view.getVisibleSize();
-        this.markerElapsed += deltaTime;
-        // 避开场景右上角的“历史复原”切换按钮，并为微信安全区留出空间。
-        this.hud.setPosition(size.width * 0.5 - 200, size.height * 0.5 - 146);
-        this.prompt.setPosition(0, -size.height * 0.5 + 90);
-        this.toast.setPosition(0, -size.height * 0.5 + 150);
+        this.toast.setPosition(-size.width * 0.5 + 244, size.height * 0.5 - 182);
         this.overlay.getComponent(UITransform)?.setContentSize(size.width, size.height);
-        this.animateMarkers();
-        this.refreshHud();
     }
 
-    private readonly collectFragment = (context: LocationInteractionContext): void => {
-        const payload = (context.payload ?? {}) as FragmentPayload;
+    getSceneProgress(locationId: string, sceneId: string): TourFragmentSceneProgress | null {
+        const host = this.getHost();
+        if (!host || host.getTourLocationId() !== locationId || host.getTourSceneId() !== sceneId) return null;
+        const targets = this.sceneTargets.filter((target) => target.handlerId === 'collect-fragment');
+        if (targets.length === 0) return null;
+        this.state = FragmentCollectionStore.load();
+        const collected = targets.filter((target) => {
+            const payload = (target.payload ?? {}) as FragmentPayload;
+            return this.state.collected.indexOf(String(payload.fragmentId ?? '')) >= 0;
+        }).length;
+        return { total: targets.length, collected };
+    }
+
+    private readonly onRuntimeSceneRendered = (): void => {
+        this.scheduleOnce(this.refreshSceneTargets, 0);
+    };
+
+    private readonly refreshSceneTargets = (): void => {
+        const host = this.getHost();
+        if (!host) return;
+        this.state = FragmentCollectionStore.load();
+        this.sceneTargets = host.getCollectionTargets();
+        const progress = this.getSceneProgress(host.getTourLocationId(), host.getTourSceneId());
+        if (!progress || progress.collected >= progress.total) return;
+        const key = `${host.getTourLocationId()}/${host.getTourSceneId()}`;
+        if (this.announcedScenes.has(key)) return;
+        this.announcedScenes.add(key);
+        this.node.emit(TOUR_FEATURE_EVENTS.fragmentDiscovered, {
+            locationId: host.getTourLocationId(),
+            sceneId: host.getTourSceneId(),
+            total: progress.total,
+            collected: progress.collected,
+        });
+    };
+
+    private readonly onMagnifierMoved = (event: MagnifierMoveEvent): void => {
+        const host = this.getHost();
+        if (!host || event.locationId !== host.getTourLocationId() || event.sceneId !== host.getTourSceneId()) return;
+        const lensX = Number(event.position?.x);
+        const lensY = Number(event.position?.y);
+        if (!Number.isFinite(lensX) || !Number.isFinite(lensY)) return;
+        this.state = FragmentCollectionStore.load();
+        const hitRadius = Math.max(42, (Number(event.radius) || 96) * 0.68);
+        const target = this.sceneTargets.find((item) => {
+            if (item.handlerId !== 'collect-fragment') return false;
+            const payload = (item.payload ?? {}) as FragmentPayload;
+            if (this.state.collected.indexOf(String(payload.fragmentId ?? '')) >= 0) return false;
+            const screenPoint = this.targetCanvasPosition(item.position);
+            return Boolean(screenPoint && Vec2.distance(screenPoint, new Vec2(lensX, lensY)) <= hitRadius);
+        });
+        if (target) this.collectWithMagnifier(target);
+    };
+
+    private targetCanvasPosition(position: Vec2): Vec2 | null {
+        const world = this.getHost()?.getTourWorld();
+        const worldTransform = world?.getComponent(UITransform);
+        const canvasTransform = this.node.getComponent(UITransform);
+        if (!worldTransform || !canvasTransform) return null;
+        const worldPoint = worldTransform.convertToWorldSpaceAR(new Vec3(position.x, position.y, 0));
+        const localPoint = canvasTransform.convertToNodeSpaceAR(worldPoint);
+        return new Vec2(localPoint.x, localPoint.y);
+    }
+
+    private collectWithMagnifier(target: CollectionTarget): void {
+        const payload = (target.payload ?? {}) as FragmentPayload;
         const fragmentId = String(payload.fragmentId ?? '');
         const definition = FRAGMENT_DEFINITIONS.find((item) => item.id === fragmentId);
-        if (!definition) return;
+        const host = this.getHost();
+        if (!definition || !host) return;
         const result = FragmentCollectionStore.collect(fragmentId);
+        if (!result.firstTime) return;
         this.state = result.state;
-        this.refreshHud();
-        this.prompt.active = false;
-        this.activePromptRegionId = '';
-        this.rebuildMarkers();
-        this.showToast(result.firstTime
-            ? `获得「${payload.title ?? definition.title}」  ${this.state.collected.length}/${FRAGMENT_DEFINITIONS.length}`
-            : `「${payload.title ?? definition.title}」已经收集过了`);
-    };
+        const progress = this.getSceneProgress(host.getTourLocationId(), host.getTourSceneId());
+        const title = payload.title ?? definition.title;
+        this.showToast(`放大镜发现「${title}」  已收入任务册 ${this.state.collected.length}/5`);
+        this.node.emit(TOUR_FEATURE_EVENTS.fragmentCollected, {
+            locationId: host.getTourLocationId(),
+            sceneId: host.getTourSceneId(),
+            fragmentId,
+            fragmentName: title,
+            total: progress?.total,
+            collected: progress?.collected,
+        });
+        if (progress && progress.collected >= progress.total) {
+            this.node.emit(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, {
+                locationId: host.getTourLocationId(),
+                sceneId: host.getTourSceneId(),
+                total: progress.total,
+                collected: progress.collected,
+            });
+        }
+    }
 
     private readonly openPuzzle = (): void => {
         this.state = FragmentCollectionStore.load();
+        this.getHost()?.setTourPaused(true);
         this.overlay.active = true;
         this.refreshPuzzle();
     };
 
-    private createUi(): void {
-        this.hud = this.makeNode('FragmentCollectionHUD', 360, 72);
-        this.drawPanel(this.hud, 360, 72, new Color(25, 24, 21, 242), new Color(224, 181, 91));
-        this.hudLabel = this.addLabel(this.hud, '', 17, new Color(255, 246, 220));
-        this.node.addChild(this.hud);
+    private closePuzzle(): void {
+        this.overlay.active = false;
+        this.getHost()?.setTourPaused(false);
+    }
 
-        this.toast = this.makeNode('FragmentToast', 540, 50);
-        this.drawPanel(this.toast, 540, 50, new Color(24, 23, 20, 245), new Color(224, 181, 91));
-        this.toastLabel = this.addLabel(this.toast, '', 18, new Color(255, 246, 220));
+    private createUi(): void {
+        this.toast = this.makeNode('FragmentToast', 456, 56);
+        this.drawPanel(this.toast, 456, 56, new Color(30, 53, 50, 244), new Color(222, 185, 104), 14);
+        this.toastLabel = this.addLabel(this.toast, '', 17, new Color(255, 246, 218));
         this.toast.active = false;
         this.node.addChild(this.toast);
-
-        this.prompt = this.makeNode('FragmentInteractionPrompt', 430, 48);
-        this.drawPanel(this.prompt, 430, 48, new Color(24, 23, 20, 246), new Color(224, 181, 91));
-        this.promptLabel = this.addLabel(this.prompt, 'F  收集遗址碎片', 20, new Color(255, 246, 220));
-        this.prompt.active = false;
-        this.node.addChild(this.prompt);
 
         this.overlay = this.makeNode('FragmentPuzzleOverlay', 1280, 720);
         this.overlay.addComponent(BlockInputEvents);
         const shade = this.overlay.addComponent(Graphics);
-        shade.fillColor = new Color(9, 8, 7, 225);
+        shade.fillColor = new Color(9, 16, 15, 214);
         shade.rect(-1000, -800, 2000, 1600);
         shade.fill();
         this.node.addChild(this.overlay);
 
         const panel = this.makeNode('SandTablePuzzle', 900, 610);
-        this.drawPanel(panel, 900, 610, new Color(38, 34, 26, 255), new Color(222, 177, 83), 18);
+        this.drawPanel(panel, 900, 610, new Color(31, 48, 44, 255), new Color(222, 185, 104), 18);
         this.overlay.addChild(panel);
         const title = this.addLabel(panel, '游客中心 · 明中都沙盘拼图', 30, new Color(255, 239, 194));
         title.node.setPosition(0, 265);
@@ -175,8 +239,7 @@ export class FragmentCollectionController extends Component {
         this.puzzleImage = this.makeNode('PuzzlePieces', 600, 390);
         this.puzzleImage.setPosition(0, 25);
         panel.addChild(this.puzzleImage);
-
-        this.puzzleStatus = this.addLabel(panel, '', 17, new Color(232, 221, 193));
+        this.puzzleStatus = this.addLabel(panel, '', 17, new Color(242, 233, 208));
         this.puzzleStatus.node.setPosition(0, -205);
 
         this.assembleButton = this.makeNode('AssembleButton', 270, 48);
@@ -185,170 +248,20 @@ export class FragmentCollectionController extends Component {
         panel.addChild(this.assembleButton);
         this.assembleLabel = this.addLabel(this.assembleButton, '拼合全部碎片', 19, new Color(255, 248, 224));
 
+        this.achievementBanner = this.makeNode('AchievementBanner', 620, 104);
+        this.drawPanel(this.achievementBanner, 620, 104, new Color(101, 69, 27, 252), new Color(255, 226, 148), 18);
+        this.addLabel(this.achievementBanner, '全收集成就解锁\n「重构明中都」', 28, new Color(255, 247, 218));
+        this.achievementBanner.addComponent(UIOpacity).opacity = 0;
+        this.achievementBanner.active = false;
+        panel.addChild(this.achievementBanner);
+
         const close = this.makeNode('CloseButton', 52, 52);
         close.setPosition(414, 270);
-        close.on(Node.EventType.TOUCH_END, () => { this.overlay.active = false; }, this);
-        this.drawPanel(close, 52, 52, new Color(92, 61, 25, 255), new Color(240, 203, 120), 26);
+        close.on(Node.EventType.TOUCH_END, this.closePuzzle, this);
+        this.drawPanel(close, 52, 52, new Color(115, 77, 32, 255), new Color(240, 203, 120), 26);
         this.addLabel(close, '×', 30, new Color(255, 247, 224));
         panel.addChild(close);
         this.overlay.active = false;
-    }
-
-    private readonly onInteractionEnter = (context: LocationInteractionContext): void => {
-        if (context.handlerId !== 'collect-fragment' && context.handlerId !== 'assemble-fragments') return;
-        if (context.handlerId === 'collect-fragment') {
-            const payload = (context.payload ?? {}) as FragmentPayload;
-            if (this.state.collected.indexOf(String(payload.fragmentId ?? '')) >= 0) return;
-        }
-        this.activePromptRegionId = context.regionId;
-        this.promptLabel.string = `F  ${context.prompt || (context.handlerId === 'collect-fragment' ? '收集遗址碎片' : '拼合遗址碎片')}`;
-        if (!this.overlay.active) this.prompt.active = true;
-    };
-
-    private readonly onInteractionExit = (regionId: string): void => {
-        if (regionId !== this.activePromptRegionId) return;
-        this.activePromptRegionId = '';
-        this.prompt.active = false;
-    };
-
-    private readonly onRuntimeSceneRendered = (): void => {
-        this.scheduleOnce(this.rebuildMarkers, 0);
-    };
-
-    private getHost(): CollectionHost | null {
-        return this.node.getComponent('LocationBootstrap') as CollectionHost | null;
-    }
-
-    private readonly rebuildMarkers = (): void => {
-        if (this.markerLayer?.isValid) this.markerLayer.destroy();
-        this.markerLayer = null;
-        this.markerViews = [];
-        this.objectiveTarget = null;
-
-        const host = this.getHost();
-        const world = host?.getTourWorld();
-        if (!host || !world?.isValid) return;
-        this.state = FragmentCollectionStore.load();
-        const targets = host.getCollectionTargets().filter((target) => {
-            if (target.handlerId !== 'collect-fragment') return true;
-            const payload = (target.payload ?? {}) as FragmentPayload;
-            return this.state.collected.indexOf(String(payload.fragmentId ?? '')) < 0;
-        });
-
-        this.markerLayer = this.makeNode('FragmentMarkerLayer', 1, 1);
-        world.addChild(this.markerLayer);
-        targets.forEach((target, index) => this.createMarker(target, index, host));
-        this.objectiveTarget = targets.find((target) => target.handlerId === 'collect-fragment')
-            ?? targets.find((target) => target.handlerId === 'assemble-fragments')
-            ?? null;
-        this.refreshHud();
-        this.showSceneGuide(host, this.objectiveTarget);
-    };
-
-    private createMarker(target: CollectionTarget, index: number, host: CollectionHost): void {
-        if (!this.markerLayer) return;
-        const isPuzzle = target.handlerId === 'assemble-fragments';
-        const payload = (target.payload ?? {}) as FragmentPayload;
-        const title = payload.title ?? (isPuzzle ? '游客中心沙盘' : '遗址碎片');
-        const marker = this.makeNode(`FragmentMarker-${target.regionId}`, 78, 96);
-        marker.setPosition(target.position.x, target.position.y + 24);
-        const graphics = marker.addComponent(Graphics);
-        const main = isPuzzle ? new Color(92, 205, 193, 245) : new Color(255, 201, 72, 250);
-        graphics.fillColor = new Color(main.r, main.g, main.b, 42);
-        graphics.circle(0, 2, 37);
-        graphics.fill();
-        graphics.strokeColor = new Color(main.r, main.g, main.b, 210);
-        graphics.lineWidth = 3;
-        graphics.circle(0, 2, 30);
-        graphics.stroke();
-        graphics.fillColor = main;
-        graphics.moveTo(0, 30);
-        graphics.lineTo(22, 5);
-        graphics.lineTo(0, -25);
-        graphics.lineTo(-22, 5);
-        graphics.close();
-        graphics.fill();
-        graphics.strokeColor = new Color(255, 248, 218, 255);
-        graphics.lineWidth = 2;
-        graphics.moveTo(0, 22);
-        graphics.lineTo(14, 5);
-        graphics.lineTo(0, -17);
-        graphics.lineTo(-14, 5);
-        graphics.close();
-        graphics.stroke();
-
-        const labelRoot = this.makeNode('MarkerLabel', 210, 48);
-        labelRoot.setPosition(0, 63);
-        this.drawPanel(labelRoot, 210, 48, new Color(22, 21, 18, 236), main, 8);
-        this.addLabel(labelRoot, `${isPuzzle ? '拼图点' : '可收集'} · ${title}`, 16, new Color(255, 248, 226));
-        marker.addChild(labelRoot);
-        this.markerLayer.addChild(marker);
-
-        const perspectiveScale = host.getTourPerspectiveScale(target.position.y);
-        const baseScale = Math.max(0.72, Math.min(1.12, perspectiveScale));
-        marker.setScale(baseScale, baseScale, 1);
-        this.markerViews.push({
-            node: marker,
-            baseY: target.position.y + 24,
-            baseScale,
-            target,
-        });
-        marker.setSiblingIndex(index);
-    }
-
-    private animateMarkers(): void {
-        this.markerViews.forEach((view, index) => {
-            if (!view.node.isValid) return;
-            const wave = Math.sin(this.markerElapsed * 2.7 + index * 0.8);
-            view.node.setPosition(view.target.position.x, view.baseY + wave * 7);
-            const scale = view.baseScale * (1 + wave * 0.045);
-            view.node.setScale(scale, scale, 1);
-        });
-    }
-
-    private showSceneGuide(host: CollectionHost, target: CollectionTarget | null): void {
-        if (!target) return;
-        const key = `${host.getTourLocationId()}/${host.getTourSceneId()}/${target.regionId}`;
-        if (this.shownSceneGuides.has(key)) return;
-        this.shownSceneGuides.add(key);
-        const payload = (target.payload ?? {}) as FragmentPayload;
-        if (target.handlerId === 'collect-fragment') {
-            this.showToast(`发现「${payload.title ?? '遗址碎片'}」：跟随金色标记，靠近后按 F 收集`);
-        } else {
-            this.showToast('这里是游客中心沙盘：集齐碎片后，靠近青色标记按 F 拼合');
-        }
-    }
-
-    private directionHint(from: Vec2, to: Vec2): string {
-        const dx = to.x - from.x;
-        const dy = to.y - from.y;
-        const horizontal = dx > 35 ? '→' : dx < -35 ? '←' : '';
-        const vertical = dy > 35 ? '↑' : dy < -35 ? '↓' : '';
-        if (vertical && horizontal) {
-            return ({ '↑→': '↗', '↑←': '↖', '↓→': '↘', '↓←': '↙' } as Record<string, string>)[`${vertical}${horizontal}`];
-        }
-        return horizontal || vertical || '就在附近';
-    }
-
-    private refreshHud(): void {
-        if (this.state.assembled) {
-            this.hudLabel.string = '遗址碎片  5/5\n成就「重构明中都」已解锁';
-            return;
-        }
-        const target = this.objectiveTarget;
-        if (!target) {
-            this.hudLabel.string = `遗址碎片  ${this.state.collected.length}/${FRAGMENT_DEFINITIONS.length}\n本场景的碎片已收集`;
-            return;
-        }
-        const payload = (target.payload ?? {}) as FragmentPayload;
-        const player = this.getHost()?.getTourPlayerPosition();
-        const direction = player ? this.directionHint(player, target.position) : '';
-        const distance = player ? Math.max(1, Math.round(Vec2.distance(player, target.position) / 18)) : 0;
-        const title = payload.title ?? (target.handlerId === 'assemble-fragments' ? '游客中心沙盘' : '遗址碎片');
-        const suffix = target.handlerId === 'assemble-fragments' && this.state.collected.length < FRAGMENT_DEFINITIONS.length
-            ? `还缺 ${FRAGMENT_DEFINITIONS.length - this.state.collected.length} 枚碎片`
-            : `${direction} 约 ${distance} 步`;
-        this.hudLabel.string = `遗址碎片  ${this.state.collected.length}/${FRAGMENT_DEFINITIONS.length}\n目标：${title}  ${suffix}`;
     }
 
     private refreshPuzzle(): void {
@@ -373,17 +286,16 @@ export class FragmentCollectionController extends Component {
                 sprite.spriteFrame = frame;
             } else {
                 const placeholder = piece.addComponent(Graphics);
-                placeholder.fillColor = new Color(18, 17, 15, 255);
-                placeholder.strokeColor = new Color(112, 94, 61, 255);
+                placeholder.fillColor = new Color(17, 31, 29, 255);
+                placeholder.strokeColor = new Color(128, 105, 61, 255);
                 placeholder.lineWidth = 2;
                 placeholder.rect(-(pieceWidth - 4) * 0.5, -195, pieceWidth - 4, 390);
                 placeholder.fill();
                 placeholder.stroke();
-                const unknown = this.addLabel(piece, '?', 44, new Color(121, 104, 72));
+                const unknown = this.addLabel(piece, '?', 44, new Color(151, 126, 73));
                 unknown.node.setPosition(0, 12);
             }
         }
-
         const count = this.state.collected.length;
         if (this.state.assembled) {
             this.puzzleStatus.string = '全收集成就「重构明中都」已解锁';
@@ -396,26 +308,45 @@ export class FragmentCollectionController extends Component {
             this.puzzleStatus.string = `已找到 ${count}/5；尚缺：${missing.map((item) => item.location).join('、')}`;
             this.assembleLabel.string = '碎片尚未集齐';
         }
-        this.drawAssembleButton(count === FRAGMENT_DEFINITIONS.length);
+        this.drawAssembleButton(count === FRAGMENT_DEFINITIONS.length && !this.state.assembled);
     }
 
     private readonly assemble = (): void => {
         if (this.state.collected.length < FRAGMENT_DEFINITIONS.length) {
-            this.showToast('还没有集齐全部五枚碎片');
+            this.showToast('碎片尚未集齐，请跟随任务提示继续寻找');
             return;
         }
+        if (this.state.assembled) return;
         const result = FragmentCollectionStore.assemble();
         this.state = result.state;
-        this.refreshHud();
         this.refreshPuzzle();
-        if (result.unlockedNow) this.showToast('成就解锁：重构明中都');
+        if (result.unlockedNow) this.playAchievementAnimation();
     };
+
+    private playAchievementAnimation(): void {
+        this.puzzleImage.children.forEach((piece, index) => {
+            const opacity = piece.getComponent(UIOpacity) ?? piece.addComponent(UIOpacity);
+            opacity.opacity = 0;
+            piece.setScale(0.72, 0.72, 1);
+            tween(opacity).delay(index * 0.12).to(0.28, { opacity: 255 }).start();
+            tween(piece).delay(index * 0.12).to(0.38, { scale: Vec3.ONE }, { easing: 'backOut' }).start();
+        });
+        this.achievementBanner.active = true;
+        this.achievementBanner.setScale(0.82, 0.82, 1);
+        const opacity = this.achievementBanner.getComponent(UIOpacity)!;
+        opacity.opacity = 0;
+        tween(opacity).delay(0.9).to(0.35, { opacity: 255 }).delay(2.2).to(0.35, { opacity: 0 }).call(() => {
+            if (this.achievementBanner.isValid) this.achievementBanner.active = false;
+        }).start();
+        tween(this.achievementBanner).delay(0.9).to(0.45, { scale: Vec3.ONE }, { easing: 'backOut' }).start();
+        this.node.emit('fragment-achievement-unlocked', { achievementId: 'rebuild-mingzhongdu' });
+    }
 
     private drawAssembleButton(enabled: boolean): void {
         const graphics = this.assembleButton.getComponent(Graphics) ?? this.assembleButton.addComponent(Graphics);
         graphics.clear();
-        graphics.fillColor = enabled ? new Color(155, 99, 35, 255) : new Color(75, 69, 57, 255);
-        graphics.strokeColor = enabled ? new Color(241, 203, 116, 255) : new Color(124, 115, 95, 255);
+        graphics.fillColor = enabled ? new Color(155, 99, 35, 255) : new Color(69, 79, 72, 255);
+        graphics.strokeColor = enabled ? new Color(241, 203, 116, 255) : new Color(130, 137, 119, 255);
         graphics.lineWidth = 2;
         graphics.roundRect(-135, -24, 270, 48, 10);
         graphics.fill();
@@ -426,9 +357,14 @@ export class FragmentCollectionController extends Component {
         const version = ++this.toastVersion;
         this.toastLabel.string = message;
         this.toast.active = true;
+        this.toast.setSiblingIndex(this.node.children.length - 1);
         this.scheduleOnce(() => {
             if (version === this.toastVersion && this.toast.isValid) this.toast.active = false;
-        }, 2.6);
+        }, 3.2);
+    }
+
+    private getHost(): CollectionHost | null {
+        return this.node.getComponent('LocationBootstrap') as CollectionHost | null;
     }
 
     private makeNode(name: string, width: number, height: number): Node {
@@ -444,7 +380,7 @@ export class FragmentCollectionController extends Component {
         const label = node.addComponent(Label);
         label.string = text;
         label.fontSize = size;
-        label.lineHeight = Math.ceil(size * 1.25);
+        label.lineHeight = Math.ceil(size * 1.3);
         label.color = color;
         label.horizontalAlign = Label.HorizontalAlign.CENTER;
         label.verticalAlign = Label.VerticalAlign.CENTER;

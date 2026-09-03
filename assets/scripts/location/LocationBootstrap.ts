@@ -66,61 +66,61 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     @property({ tooltip: '地点配置 ID' })
     locationId = 'visitor-center';
 
-    @property({ type: SpriteFrame, tooltip: '入口桥分镜背景' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '入口桥分镜背景（仅编辑器预览，发布时按需加载）' })
     entranceGateCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '中轴道路分镜背景' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '中轴道路分镜背景（仅编辑器预览，发布时按需加载）' })
     mainRoadCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '咖啡庭院分镜背景' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '咖啡庭院分镜背景（仅编辑器预览，发布时按需加载）' })
     cafeGardenCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '休闲广场分镜背景' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '休闲广场分镜背景（仅编辑器预览，发布时按需加载）' })
     leisurePlazaCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '展馆外院分镜背景' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '展馆外院分镜背景（仅编辑器预览，发布时按需加载）' })
     visitorBuildingCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '游客中心外景原图/风格图' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '游客中心外景原图/风格图（仅编辑器预览）' })
     exteriorCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '游客中心内景原图/风格图' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '游客中心内景原图/风格图（仅编辑器预览）' })
     interiorCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 1' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 1（仅编辑器预览）' })
     scene1Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 2' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 2（仅编辑器预览）' })
     scene2Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 3' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 3（仅编辑器预览）' })
     scene3Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 4' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 4（仅编辑器预览）' })
     scene4Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 4.5' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 4.5（仅编辑器预览）' })
     scene4_5Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 5' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 5（仅编辑器预览）' })
     scene5Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 6' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 6（仅编辑器预览）' })
     scene6Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 7' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 7（仅编辑器预览）' })
     scene7Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点分镜 8' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点分镜 8（仅编辑器预览）' })
     scene8Current: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '通用地点宽幅主分镜' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '通用地点宽幅主分镜（仅编辑器预览）' })
     sceneMainCurrent: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '外景历史复原图（待制作）' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '外景历史复原图（仅编辑器预览）' })
     exteriorRestored: SpriteFrame | null = null;
 
-    @property({ type: SpriteFrame, tooltip: '内景历史复原图（待制作）' })
+    @property({ type: SpriteFrame, editorOnly: true, tooltip: '内景历史复原图（仅编辑器预览）' })
     interiorRestored: SpriteFrame | null = null;
 
     @property({ tooltip: '运行时显示可行走区、障碍和切景区' })
@@ -148,6 +148,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private playerShadow!: Node;
     private player!: Node;
     private readonly foregroundLayers = new Map<string, Node>();
+    private readonly foregroundOcclusionState = new Map<string, boolean>();
     private playerAnimator!: DirectionalWalkAnimator;
     private joystick!: Node;
     private joystickKnob!: Node;
@@ -245,6 +246,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         this.settingsOverlay.initialize(this.node, {
             onVisibilityChanged: (visible) => this.setSettingsPaused(visible),
         });
+        // 固定在左上安全区，避开微信右上角胶囊和场景右上角小地图。
         this.settingsOverlay.createEntryButton(this.node);
         this.bindInput();
         this.layoutUi();
@@ -414,25 +416,81 @@ export class LocationBootstrap extends Component implements LocationTourHost {
      * Builds visual layers from editor-authored two-point occlusion lines.
      */
     private createForegroundLayers(parent: Node): void {
-        if (!EDITOR) this.foregroundLayers.clear();
+        if (!EDITOR) {
+            this.foregroundLayers.clear();
+            this.foregroundOcclusionState.clear();
+        }
         const library = this.node.getChildByName('ForegroundLibrary');
-        const assetNames = [...new Set(
+        const assetNames = Array.from(new Set(
             (this.sceneConfig.occlusionLines ?? [])
                 .map((line) => line.foregroundAsset)
                 .filter(Boolean),
-        )];
+        ));
         for (const assetName of assetNames) {
             const authoredForeground = library?.getChildByName(assetName);
-            if (!authoredForeground) {
-                console.warn(`[LocationBootstrap] 场景中缺少静态前景节点：ForegroundLibrary/${assetName}`);
-                continue;
-            }
-            const layer = instantiate(authoredForeground);
+            const layer = authoredForeground
+                ? instantiate(authoredForeground)
+                : this.createForegroundFromResource(assetName);
             layer.name = `Foreground-${assetName}`;
+            this.normalizeForegroundLayer(layer);
             parent.addChild(layer);
-            if (!EDITOR) this.foregroundLayers.set(assetName, layer);
+            if (!EDITOR) {
+                this.foregroundLayers.set(assetName, layer);
+                this.foregroundOcclusionState.set(assetName, false);
+            }
             layer.active = EDITOR;
         }
+    }
+
+    /**
+     * Foreground PNGs are imported with automatic transparent-border trimming.
+     * A Sprite in trimmed mode stretches that small opaque rectangle across the
+     * whole UITransform, which is especially visible on mobile as a full-screen
+     * close-up. Every foreground is authored against the complete scene canvas,
+     * so render the trimmed frame back in its original untrimmed coordinate
+     * space and force a canvas-sized transform.
+     */
+    private normalizeForegroundLayer(layer: Node): void {
+        layer.setPosition(0, 0, 0);
+        layer.setScale(1, 1, 1);
+        layer.setRotationFromEuler(0, 0, 0);
+        let transform = layer.getComponent(UITransform);
+        if (!transform) transform = layer.addComponent(UITransform);
+        transform.setAnchorPoint(0.5, 0.5);
+        transform.setContentSize(this.sceneConfig.worldSize);
+        const sprite = layer.getComponent(Sprite);
+        if (!sprite) return;
+        sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        sprite.trim = false;
+    }
+
+    /**
+     * 旧场景的 ForegroundLibrary 仍是首选；新补充的前景若尚未由编辑器
+     * 固化到场景，也能按同一套资源命名规则安全加载，避免预览与发布缺图。
+     */
+    private createForegroundFromResource(assetName: string): Node {
+        const layer = new Node(assetName);
+        layer.layer = Layers.Enum.UI_2D;
+        const transform = layer.addComponent(UITransform);
+        transform.setAnchorPoint(0.5, 0.5);
+        transform.setContentSize(this.sceneConfig.worldSize);
+        const sprite = layer.addComponent(Sprite);
+        sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        sprite.trim = false;
+        const sceneId = this.currentSceneId;
+        const resourcePath = `locations/${this.locationId}/scenes/${assetName}/spriteFrame`;
+        resources.load(resourcePath, SpriteFrame, (error, frame) => {
+            if (error || !frame) {
+                console.warn(`[LocationBootstrap] 前景加载失败：${resourcePath}`, error);
+                return;
+            }
+            if (!layer.isValid || this.currentSceneId !== sceneId) return;
+            sprite.spriteFrame = frame;
+            sprite.sizeMode = Sprite.SizeMode.CUSTOM;
+            sprite.trim = false;
+            transform.setContentSize(this.sceneConfig.worldSize);
+        });
+        return layer;
     }
 
     private createRegionLayer(parent: Node, editor: boolean): void {
@@ -772,7 +830,20 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     }
 
     /** The two endpoints define both the active width and the depth threshold. */
-    private isBehindOcclusionLine(point: Vec2, start: Vec2, end: Vec2): boolean {
+    private isBehindOcclusionLine(
+        point: Vec2,
+        start: Vec2,
+        end: Vec2,
+        depthMargin = 0,
+    ): boolean {
+        if (
+            !Number.isFinite(point.x)
+            || !Number.isFinite(point.y)
+            || !Number.isFinite(start.x)
+            || !Number.isFinite(start.y)
+            || !Number.isFinite(end.x)
+            || !Number.isFinite(end.y)
+        ) return false;
         const minX = Math.min(start.x, end.x);
         const maxX = Math.max(start.x, end.x);
         if (point.x < minX || point.x > maxX) return false;
@@ -780,7 +851,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         if (Math.abs(width) < 0.001) return false;
         const ratio = (point.x - start.x) / width;
         const lineY = start.y + (end.y - start.y) * ratio;
-        return point.y >= lineY;
+        return point.y >= lineY + depthMargin;
     }
 
     /**
@@ -968,6 +1039,8 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         const regions = this.interactionRegions.get(this.currentSceneId) ?? [];
         const nextActive = new Set<string>();
         for (const region of regions) {
+            // 碎片区域只供放大镜搜索，不能占用普通 F/查看交互。
+            if (region.handlerId === 'collect-fragment') continue;
             if (!this.pointInPolygon(this.playerPosition, region.points)) continue;
             nextActive.add(region.id);
             if (!this.activeInteractionIds.has(region.id)) {
@@ -987,7 +1060,10 @@ export class LocationBootstrap extends Component implements LocationTourHost {
 
     private activateNearbyInteraction(): boolean {
         const regions = this.interactionRegions.get(this.currentSceneId) ?? [];
-        const region = regions.find((item) => this.pointInPolygon(this.playerPosition, item.points));
+        const region = regions.find((item) => (
+            item.handlerId !== 'collect-fragment'
+            && this.pointInPolygon(this.playerPosition, item.points)
+        ));
         if (!region) return false;
         const context = this.getInteractionContext(region);
         const activated = LocationInteractionRegistry.activate(context);
@@ -1039,10 +1115,21 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     private updateForegroundOcclusion(): void {
         const lines = this.sceneConfig.occlusionLines ?? [];
         for (const [assetName, layer] of this.foregroundLayers) {
-            layer.active = lines.some((line) => (
+            // 黄线端点同时限定横向有效范围。移动端触摸输入容易在阈值附近
+            // 来回抖动，因此进入/离开各保留 4 个世界单位的滞回，避免前景闪烁。
+            const wasActive = this.foregroundOcclusionState.get(assetName) ?? false;
+            const depthMargin = wasActive ? -4 : 4;
+            const active = lines.some((line) => (
                 line.foregroundAsset === assetName
-                && this.isBehindOcclusionLine(this.playerPosition, line.start, line.end)
+                && this.isBehindOcclusionLine(
+                    this.playerPosition,
+                    line.start,
+                    line.end,
+                    depthMargin,
+                )
             ));
+            this.foregroundOcclusionState.set(assetName, active);
+            layer.active = active;
         }
     }
 

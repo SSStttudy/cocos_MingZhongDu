@@ -8,6 +8,7 @@
     "skipLibCheck": true
   },
   "exclude": [
-    "art-review/site/**"
+    "art-review/site/**",
+    "tmp/**"
   ]
 }

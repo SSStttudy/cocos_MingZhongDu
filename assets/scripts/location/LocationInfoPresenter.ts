@@ -60,7 +60,7 @@ export class LocationInfoPresenter extends Component {
     contentPadding = 26;
 
     @property({ tooltip: '靠近交互点时，底部提示距屏幕底部的距离。' })
-    promptBottom = 72;
+    promptBottom = 122;
 
     @property({ tooltip: '弹窗相对屏幕的最大占用比例。' })
     screenCoverage = 0.8;
@@ -263,7 +263,7 @@ export class LocationInfoPresenter extends Component {
     private onInteractionEnter(context: LocationInteractionContext): void {
         if (context.handlerId !== 'location-info') return;
         this.activeRegionId = context.regionId;
-        this.promptLabel.string = `点击“查看” · ${context.prompt || '查看遗址介绍'}`;
+        this.promptLabel.string = `F  ·  ${context.prompt || '查看遗址介绍'}`;
         if (!this.overlay.active) this.promptRoot.active = true;
     }
 

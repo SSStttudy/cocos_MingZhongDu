@@ -21,6 +21,7 @@ export const TOUR_FEATURE_EVENTS = {
     fragmentCollected: 'tour-fragment-collected',
     fragmentSceneCompleted: 'tour-fragment-scene-completed',
     magnifierExpanded: 'tour-magnifier-expanded',
+    magnifierMoved: 'tour-magnifier-moved',
     magnifierCollapsed: 'tour-magnifier-collapsed',
 } as const;
 

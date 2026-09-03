@@ -47,7 +47,10 @@ function findNode(root, name) {
 
 function getCanvas() {
     const { director } = getEngine();
-    const canvas = findNode(director.getScene(), 'Canvas');
+    const scene = director.getScene();
+    // Canvas 在本项目中是场景根节点的直接子节点。优先直接读取，避免
+    // InteractionUI 等大量静态节点加入后递归扫描整棵场景树。
+    const canvas = scene?.getChildByName('Canvas') || findNode(scene, 'Canvas');
     if (!canvas) throw new Error('当前场景未找到 Canvas');
     return canvas;
 }

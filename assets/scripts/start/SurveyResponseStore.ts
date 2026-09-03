@@ -1,7 +1,10 @@
 import { sys } from 'cc';
 
 export const SURVEY_STORAGE_KEY = 'ming-zhongdu.survey.v1';
+export const SURVEY_SYNC_STORAGE_KEY = 'ming-zhongdu.survey-sync.v1';
 export const SURVEY_QUESTIONNAIRE_VERSION = '1.1' as const;
+export const SURVEY_ENDPOINT = 'https://nyasd.net/api/mingzhongdu/feedback';
+export const GAME_RELEASE_VERSION = '0.2.1';
 
 export type SurveyConsent = 'adult-consent' | 'minor-guardian-consent';
 export type SurveyParticipationMode = 'self' | 'mixed' | 'demo';
@@ -177,7 +180,21 @@ export type SurveySubmitResult =
 type WxStorage = {
     getStorageSync?: (key: string) => unknown;
     setStorageSync?: (key: string, value: string) => void;
+    request?: (options: {
+        url: string;
+        method: 'POST';
+        data: unknown;
+        header: Record<string, string>;
+        timeout: number;
+        success: (response: { statusCode?: number }) => void;
+        fail: (error: unknown) => void;
+    }) => void;
 };
+
+type FetchLike = (
+    input: string,
+    init: { method: string; headers: Record<string, string>; body: string },
+) => Promise<{ ok: boolean; status: number }>;
 
 const MAX_IMPROVEMENT_OTHER_LENGTH = 120;
 const MAX_MEMORABLE_CONTENT_LENGTH = 300;
@@ -186,26 +203,87 @@ function getWxStorage(): WxStorage | null {
     return (globalThis as unknown as { wx?: WxStorage }).wx ?? null;
 }
 
-function readStorage(): string | null {
+function readStorageKey(key: string): string | null {
     const wx = getWxStorage();
     if (typeof wx?.getStorageSync === 'function') {
-        const value = wx.getStorageSync(SURVEY_STORAGE_KEY);
+        const value = wx.getStorageSync(key);
         return typeof value === 'string' && value.length > 0 ? value : null;
     }
-    return sys.localStorage.getItem(SURVEY_STORAGE_KEY);
+    return sys.localStorage.getItem(key);
 }
 
-function writeStorage(state: SurveyStoreStateV1): void {
-    const value = JSON.stringify(state);
+function writeStorageKey(key: string, value: string): void {
     const wx = getWxStorage();
     if (typeof wx?.setStorageSync === 'function') {
-        wx.setStorageSync(SURVEY_STORAGE_KEY, value);
+        wx.setStorageSync(key, value);
         return;
     }
     if (!sys.localStorage || typeof sys.localStorage.setItem !== 'function') {
         throw new Error('当前环境不支持本地存储。');
     }
-    sys.localStorage.setItem(SURVEY_STORAGE_KEY, value);
+    sys.localStorage.setItem(key, value);
+}
+
+function readStorage(): string | null {
+    return readStorageKey(SURVEY_STORAGE_KEY);
+}
+
+function writeStorage(state: SurveyStoreStateV1): void {
+    writeStorageKey(SURVEY_STORAGE_KEY, JSON.stringify(state));
+}
+
+function readSyncedResponseIds(): Set<string> {
+    try {
+        const raw = readStorageKey(SURVEY_SYNC_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : []);
+    } catch {
+        return new Set<string>();
+    }
+}
+
+function writeSyncedResponseIds(ids: Set<string>): void {
+    writeStorageKey(SURVEY_SYNC_STORAGE_KEY, JSON.stringify([...ids].slice(-500)));
+}
+
+function getPlatformName(): 'wechatgame' | 'web' {
+    return typeof getWxStorage()?.request === 'function' ? 'wechatgame' : 'web';
+}
+
+function uploadSubmission(submission: SurveySubmissionV1): Promise<void> {
+    const payload = {
+        version: 1,
+        gameVersion: GAME_RELEASE_VERSION,
+        platform: getPlatformName(),
+        submission,
+    };
+    const wx = getWxStorage();
+    if (typeof wx?.request === 'function') {
+        return new Promise((resolve, reject) => {
+            wx.request!({
+                url: SURVEY_ENDPOINT,
+                method: 'POST',
+                data: payload,
+                header: { 'content-type': 'application/json' },
+                timeout: 12000,
+                success: (response) => {
+                    const status = Number(response.statusCode || 0);
+                    if (status >= 200 && status < 300) resolve();
+                    else reject(new Error(`HTTP_${status}`));
+                },
+                fail: reject,
+            });
+        });
+    }
+    const fetcher = (globalThis as unknown as { fetch?: FetchLike }).fetch;
+    if (typeof fetcher !== 'function') return Promise.reject(new Error('NETWORK_UNAVAILABLE'));
+    return fetcher(SURVEY_ENDPOINT, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+    }).then((response) => {
+        if (!response.ok) throw new Error(`HTTP_${response.status}`);
+    });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -520,6 +598,7 @@ function normalizeStoredState(value: unknown): SurveyStoreStateV1 {
 
 export class SurveyResponseStore {
     private static cachedState: SurveyStoreStateV1 | null = null;
+    private static syncInFlight: Promise<{ uploaded: number; pending: number }> | null = null;
 
     static loadDraft(): SurveyDraftV1 | null {
         const draft = this.getState().activeDraft;
@@ -528,6 +607,7 @@ export class SurveyResponseStore {
 
     /** 首次开始或继续草稿；已有提交时须显式调用 startNextRespondent。 */
     static startDraft(): SurveyDraftMutationResult {
+        void this.syncPending();
         const state = cloneState(this.getState());
         if (state.activeDraft) return { ok: true, draft: cloneDraft(state.activeDraft) };
         if (state.submissions.length > 0) return { ok: false, reason: 'already-submitted' };
@@ -537,6 +617,7 @@ export class SurveyResponseStore {
 
     /** 现场共用设备交给下一位参与者时调用；不会覆盖历史提交。 */
     static startNextRespondent(): SurveyDraftMutationResult {
+        void this.syncPending();
         const state = cloneState(this.getState());
         if (state.activeDraft) return { ok: true, draft: cloneDraft(state.activeDraft) };
         state.activeDraft = makeDraft();
@@ -640,6 +721,7 @@ export class SurveyResponseStore {
             submissions: [...state.submissions, submission],
         };
         if (this.persist(submittedState)) {
+            void this.syncPending();
             return { ok: true, submission: cloneSubmission(submission), duplicate: false };
         }
 
@@ -652,6 +734,44 @@ export class SurveyResponseStore {
             errors: [validationError('storage', 'write-failed', '答案未能保存，请稍后重试。')],
             draft: cloneDraft(completedDraft),
         };
+    }
+
+    /**
+     * 将网页与微信小游戏的本地答卷汇总到同一服务器。
+     * 失败的答卷继续留在设备中，下次打开问卷时会自动重试。
+     */
+    static syncPending(): Promise<{ uploaded: number; pending: number }> {
+        if (this.syncInFlight) return this.syncInFlight;
+        const operation = (async () => {
+            const submissions = cloneState(this.getState()).submissions;
+            const synced = readSyncedResponseIds();
+            let uploaded = 0;
+            for (const submission of submissions) {
+                if (synced.has(submission.responseId)) continue;
+                try {
+                    await uploadSubmission(submission);
+                    synced.add(submission.responseId);
+                    writeSyncedResponseIds(synced);
+                    uploaded += 1;
+                } catch (error) {
+                    console.warn('[SurveyResponseStore] 答卷暂未同步，稍后会自动重试。', error);
+                    break;
+                }
+            }
+            const pending = submissions.filter((item) => !synced.has(item.responseId)).length;
+            return { uploaded, pending };
+        })();
+        this.syncInFlight = operation.then(
+            (result) => {
+                this.syncInFlight = null;
+                return result;
+            },
+            (error) => {
+                this.syncInFlight = null;
+                throw error;
+            },
+        );
+        return this.syncInFlight;
     }
 
     private static getState(): SurveyStoreStateV1 {
