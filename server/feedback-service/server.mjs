@@ -21,9 +21,14 @@ const moduleOptions = new Set([
     'magnifier', 'fragments-puzzle', 'settings',
 ]);
 const ageOptions = new Set(['under-18', '18-25', '26-40', '41-60', '61-plus', 'prefer-not']);
-const improvementOptions = new Set([
+const improvementOptionsV1 = new Set([
     'history-clarity', 'history-depth', 'map-spatial-relations', 'tour-guidance',
     'movement-touch', 'scene-navigation', 'magnifier-fragments',
+    'visual-readability', 'performance', 'none', 'other',
+]);
+const impressionOptionsV2 = new Set(['map', 'knowledge-cards', 'site-scenes', 'interaction']);
+const improvementOptionsV2 = new Set([
+    'history-depth', 'map-expansion', 'movement-touch', 'scene-interaction',
     'visual-readability', 'performance', 'none', 'other',
 ]);
 
@@ -63,20 +68,24 @@ function validOptionArray(value, options, minimum = 0, maximum = Number.POSITIVE
         && value.every((item) => typeof item === 'string' && options.has(item));
 }
 
-function validateSubmission(value) {
-    if (!isRecord(value) || value.version !== 1) return false;
+function validateEnvelope(value) {
+    if (!isRecord(value) || ![1, 2].includes(value.version)) return false;
     if (typeof value.gameVersion !== 'string' || value.gameVersion.length > 32) return false;
     if (!['web', 'wechatgame'].includes(value.platform)) return false;
     const submission = value.submission;
     if (!isRecord(submission)
-        || submission.version !== 1
-        || submission.surveyVersion !== '1.1'
         || typeof submission.responseId !== 'string'
         || !/^response-[a-z0-9-]{8,80}$/i.test(submission.responseId)
         || typeof submission.sessionId !== 'string'
         || submission.sessionId.length > 120
         || typeof submission.submittedDate !== 'string'
         || !/^\d{4}-\d{2}-\d{2}$/.test(submission.submittedDate)) return false;
+    return true;
+}
+
+function validateSubmissionV1(value) {
+    const submission = value.submission;
+    if (value.version !== 1 || submission.version !== 1 || submission.surveyVersion !== '1.1') return false;
     const answers = submission.answers;
     if (!isRecord(answers)) return false;
     if (!consentOptions.has(answers.consent) || !participationOptions.has(answers.participationMode)) return false;
@@ -88,12 +97,39 @@ function validateSubmission(value) {
         answers.furtherLearningInterest, answers.digitalDisplaySuitability,
         answers.visualThemeCoherence].every(isAgreement)) return false;
     if (!isRating(answers.overallSatisfaction) || !isRating(answers.recommendationWillingness)) return false;
-    if (!validOptionArray(answers.improvementPriorities, improvementOptions, 1, 3)) return false;
+    if (!validOptionArray(answers.improvementPriorities, improvementOptionsV1, 1, 3)) return false;
     if (answers.improvementOther !== undefined
         && (typeof answers.improvementOther !== 'string' || answers.improvementOther.length > 120)) return false;
     if (answers.memorableContent !== undefined
         && (typeof answers.memorableContent !== 'string' || answers.memorableContent.length > 300)) return false;
     return true;
+}
+
+function validateSubmissionV2(value) {
+    const submission = value.submission;
+    if (value.version !== 2 || submission.version !== 2 || submission.surveyVersion !== '2.3') return false;
+    const answers = submission.answers;
+    if (!isRecord(answers)) return false;
+    if (![answers.priorKnowledge, answers.postKnowledge,
+        answers.furtherLearningInterest, answers.overallSatisfaction].every(isRating)) return false;
+    if (!impressionOptionsV2.has(answers.deepestImpression)) return false;
+    if (!validOptionArray(answers.improvementPriorities, improvementOptionsV2, 1, 2)) return false;
+    const uniquePriorities = new Set(answers.improvementPriorities);
+    if (uniquePriorities.size !== answers.improvementPriorities.length) return false;
+    if (uniquePriorities.has('none') && uniquePriorities.size > 1) return false;
+    if (uniquePriorities.has('other')
+        && (typeof answers.improvementOther !== 'string'
+            || answers.improvementOther.trim().length === 0
+            || answers.improvementOther.trim().length > 120)) return false;
+    if (!uniquePriorities.has('other') && answers.improvementOther !== undefined) return false;
+    if (answers.suggestions !== undefined
+        && (typeof answers.suggestions !== 'string' || answers.suggestions.trim().length > 300)) return false;
+    return true;
+}
+
+function validateSubmission(value) {
+    if (!validateEnvelope(value)) return false;
+    return value.version === 1 ? validateSubmissionV1(value) : validateSubmissionV2(value);
 }
 
 async function readJsonBody(request) {
@@ -154,22 +190,26 @@ const exportColumns = [
     ['游戏版本', (r) => r.gameVersion],
     ['问卷版本', (r) => r.surveyVersion],
     ['提交日期', (r) => r.submittedDate],
+    ['体验前了解程度', (r) => r.answers?.priorKnowledge],
+    ['印象最深的部分', (r) => r.answers?.deepestImpression],
+    ['优先改进项', (r) => r.answers?.improvementPriorities?.join(';')],
+    ['其他改进意见', (r) => r.answers?.improvementOther],
+    ['体验后了解程度', (r) => r.answers?.postKnowledge],
+    ['继续了解兴趣', (r) => r.answers?.furtherLearningInterest],
+    ['总体满意度', (r) => r.answers?.overallSatisfaction],
+    ['其他建议', (r) => r.answers?.suggestions],
+    // 以下字段只用于兼容已经收集的 1.1 版答卷。
     ['同意类型', (r) => r.answers?.consent],
     ['体验方式', (r) => r.answers?.participationMode],
     ['体验模块', (r) => r.answers?.experiencedModules?.join(';')],
     ['年龄段', (r) => r.answers?.ageGroup],
-    ['体验前了解程度', (r) => r.answers?.priorKnowledge],
     ['知识卡清晰度', (r) => r.answers?.knowledgeCardClarity],
     ['空间关系理解', (r) => r.answers?.spatialRelationshipUnderstanding],
     ['历史意义理解', (r) => r.answers?.historicalMeaningUnderstanding],
-    ['继续了解兴趣', (r) => r.answers?.furtherLearningInterest],
     ['数字展示适合度', (r) => r.answers?.digitalDisplaySuitability],
     ['视觉主题协调度', (r) => r.answers?.visualThemeCoherence],
-    ['总体满意度', (r) => r.answers?.overallSatisfaction],
     ['推荐意愿', (r) => r.answers?.recommendationWillingness],
-    ['优先改进项', (r) => r.answers?.improvementPriorities?.join(';')],
-    ['其他改进意见', (r) => r.answers?.improvementOther],
-    ['印象最深内容', (r) => r.answers?.memorableContent],
+    ['印象最深内容（旧版）', (r) => r.answers?.memorableContent],
 ];
 
 function makeCsv(records) {
@@ -265,7 +305,11 @@ const server = createServer(async (request, response) => {
                 result[item.platform] = (result[item.platform] || 0) + 1;
                 return result;
             }, {});
-            writeJson(response, 200, { total: questionnaireRecords.length, byPlatform }, origin);
+            const bySurveyVersion = questionnaireRecords.reduce((result, item) => {
+                result[item.surveyVersion] = (result[item.surveyVersion] || 0) + 1;
+                return result;
+            }, {});
+            writeJson(response, 200, { total: questionnaireRecords.length, byPlatform, bySurveyVersion }, origin);
             return;
         }
     }
