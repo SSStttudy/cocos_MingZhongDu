@@ -41,19 +41,19 @@
       "userData": {
         "trimThreshold": 1,
         "rotated": false,
-        "offsetX": 436,
-        "offsetY": 52,
-        "trimX": 872,
+        "offsetX": 0,
+        "offsetY": 0,
+        "trimX": 0,
         "trimY": 0,
-        "width": 1176,
-        "height": 1432,
+        "width": 2048,
+        "height": 1536,
         "rawWidth": 2048,
         "rawHeight": 1536,
         "borderTop": 0,
         "borderBottom": 0,
         "borderLeft": 0,
         "borderRight": 0,
-        "packable": true,
+        "packable": false,
         "pixelsToUnit": 100,
         "pivotX": 0.5,
         "pivotY": 0.5,
@@ -61,20 +61,20 @@
         "isUuid": true,
         "imageUuidOrDatabaseUri": "d8a700a1-3c3b-4c90-a91f-36d0f0a30016@6c48a",
         "atlasUuid": "",
-        "trimType": "auto",
+        "trimType": "none",
         "vertices": {
           "rawPosition": [
-            -588,
-            -716,
+            -1024,
+            -768,
             0,
-            588,
-            -716,
+            1024,
+            -768,
             0,
-            -588,
-            716,
+            -1024,
+            768,
             0,
-            588,
-            716,
+            1024,
+            768,
             0
           ],
           "indexes": [
@@ -86,33 +86,33 @@
             3
           ],
           "uv": [
-            872,
+            0,
             1536,
             2048,
             1536,
-            872,
-            104,
+            0,
+            0,
             2048,
-            104
+            0
           ],
           "nuv": [
-            0.42578125,
-            0.06770833333333333,
+            0,
+            0,
             1,
-            0.06770833333333333,
-            0.42578125,
+            0,
+            0,
             1,
             1,
             1
           ],
           "minPos": [
-            -588,
-            -716,
+            -1024,
+            -768,
             0
           ],
           "maxPos": [
-            588,
-            716,
+            1024,
+            768,
             0
           ]
         }

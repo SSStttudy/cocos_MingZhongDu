@@ -10,6 +10,7 @@ import {
     resources,
     Sprite,
     SpriteFrame,
+    UIOpacity,
     UITransform,
     Vec2,
     view,
@@ -28,6 +29,9 @@ export class StoneBaseRestorationViewer extends Component {
     private lens!: Node;
     private viewport!: Node;
     private magnifiedImage!: Node;
+    private fragmentReveal!: Node;
+    private fragmentRevealSprite!: Sprite;
+    private fragmentRevealGlow!: Graphics;
     private dockedVisual!: Node;
     private expandedVisual!: Node;
     private handle!: Node;
@@ -101,6 +105,20 @@ export class StoneBaseRestorationViewer extends Component {
         const magnifiedSprite = this.magnifiedImage.addComponent(Sprite);
         magnifiedSprite.sizeMode = Sprite.SizeMode.CUSTOM;
         this.viewport.addChild(this.magnifiedImage);
+
+        this.fragmentReveal = new Node('FragmentReveal');
+        this.fragmentReveal.layer = Layers.Enum.UI_2D;
+        this.fragmentReveal.addComponent(UITransform);
+        this.fragmentReveal.addComponent(UIOpacity).opacity = 0;
+        this.fragmentRevealGlow = this.fragmentReveal.addComponent(Graphics);
+        const fragmentArtwork = new Node('FragmentArtwork');
+        fragmentArtwork.layer = Layers.Enum.UI_2D;
+        fragmentArtwork.addComponent(UITransform);
+        this.fragmentRevealSprite = fragmentArtwork.addComponent(Sprite);
+        this.fragmentRevealSprite.sizeMode = Sprite.SizeMode.CUSTOM;
+        this.fragmentReveal.addChild(fragmentArtwork);
+        this.fragmentReveal.active = false;
+        this.viewport.addChild(this.fragmentReveal);
 
         this.dockedVisual = this.createArtworkNode('DockedArtwork');
         this.expandedVisual = this.createArtworkNode('ExpandedArtwork');
@@ -202,6 +220,7 @@ export class StoneBaseRestorationViewer extends Component {
         this.dragging = false;
         this.lens.setPosition(this.home.x, this.home.y, 0);
         this.viewport.active = false;
+        this.hideFragmentReveal();
         this.dockedVisual.active = true;
         this.expandedVisual.active = false;
         this.layoutHandle();
@@ -304,6 +323,51 @@ export class StoneBaseRestorationViewer extends Component {
         this.lens.setPosition(x, y, 0);
         this.alignMagnifiedImage();
         this.emitLensPosition();
+    }
+
+    /** Displays the matching reconstruction shard only inside the circular lens. */
+    showFragmentReveal(frame: SpriteFrame | null, canvasPosition: Vec2, strength: number): void {
+        this.ensureUi();
+        if (!this.dragging || strength <= 0) {
+            this.hideFragmentReveal();
+            return;
+        }
+        const normalizedStrength = Math.max(0, Math.min(1, strength));
+        const width = Math.max(46, this.radius * 0.48);
+        const height = Math.max(88, this.radius * 1.02);
+        const artwork = this.fragmentReveal.getChildByName('FragmentArtwork')!;
+        artwork.getComponent(UITransform)!.setContentSize(width, height);
+        this.fragmentReveal.getComponent(UITransform)!.setContentSize(width + 28, height + 28);
+        this.fragmentRevealSprite.spriteFrame = frame;
+        artwork.active = Boolean(frame);
+
+        this.fragmentRevealGlow.clear();
+        this.fragmentRevealGlow.fillColor = new Color(244, 207, 111, 105 + Math.round(70 * normalizedStrength));
+        this.fragmentRevealGlow.strokeColor = new Color(255, 246, 205, 220);
+        this.fragmentRevealGlow.lineWidth = 3;
+        this.fragmentRevealGlow.moveTo(-width * 0.48, height * 0.36);
+        this.fragmentRevealGlow.lineTo(width * 0.32, height * 0.5);
+        this.fragmentRevealGlow.lineTo(width * 0.5, -height * 0.18);
+        this.fragmentRevealGlow.lineTo(width * 0.12, -height * 0.5);
+        this.fragmentRevealGlow.lineTo(-width * 0.42, -height * 0.32);
+        this.fragmentRevealGlow.close();
+        this.fragmentRevealGlow.fill();
+        this.fragmentRevealGlow.stroke();
+
+        this.fragmentReveal.setPosition(
+            (canvasPosition.x - this.lens.position.x) * MAGNIFICATION,
+            (canvasPosition.y - this.lens.position.y) * MAGNIFICATION,
+            0,
+        );
+        const opacity = this.fragmentReveal.getComponent(UIOpacity)!;
+        opacity.opacity = Math.round(110 + normalizedStrength * 145);
+        const scale = 0.82 + normalizedStrength * 0.22;
+        this.fragmentReveal.setScale(scale, scale, 1);
+        this.fragmentReveal.active = true;
+    }
+
+    hideFragmentReveal(): void {
+        if (this.fragmentReveal?.isValid) this.fragmentReveal.active = false;
     }
 
     private emitLensPosition(): void {

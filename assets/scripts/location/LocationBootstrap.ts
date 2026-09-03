@@ -15,6 +15,8 @@ import {
     Layers,
     Node,
     resources,
+    Rect,
+    Size,
     Sprite,
     SpriteFrame,
     UITransform,
@@ -197,7 +199,11 @@ export class LocationBootstrap extends Component implements LocationTourHost {
     onLoad(): void {
         this.config = getLocationConfig(this.locationId);
         this.applyExportedRegionData();
-        this.applyAuthoredOcclusionLines();
+        // 制作阶段允许场景里的黄色遮挡线即时覆盖导出的 JSON，便于编辑器预览。
+        // 正式运行必须只使用随版本发布、已通过校验的 regions.json：旧场景中
+        // 序列化的线条可能没有随 JSON 修复同步，曾导致手机端再次启用过大的
+        // 遮挡范围，人物移动一步后整张前景铺满屏幕。
+        if (EDITOR) this.applyAuthoredOcclusionLines();
         const locationEntry = EDITOR
             ? null
             : LocationTransitionState.consumeLocationEntry(this.locationId);
@@ -462,6 +468,27 @@ export class LocationBootstrap extends Component implements LocationTourHost {
         if (!sprite) return;
         sprite.sizeMode = Sprite.SizeMode.CUSTOM;
         sprite.trim = false;
+        if (sprite.spriteFrame) {
+            sprite.spriteFrame = this.createCanvasForegroundFrame(sprite.spriteFrame);
+        }
+    }
+
+    /**
+     * Foregrounds must keep the same full-canvas coordinates as their photos.
+     * Some platform importers still expose the automatically trimmed rect even
+     * when Sprite.trim is false, so rebuild a full-texture frame explicitly.
+     */
+    private createCanvasForegroundFrame(frame: SpriteFrame): SpriteFrame {
+        const texture = frame.texture;
+        const width = texture.width || frame.originalSize.width;
+        const height = texture.height || frame.originalSize.height;
+        const canvasFrame = new SpriteFrame();
+        canvasFrame.texture = texture;
+        canvasFrame.rect = new Rect(0, 0, width, height);
+        canvasFrame.originalSize = new Size(width, height);
+        canvasFrame.offset = Vec2.ZERO;
+        canvasFrame.rotated = false;
+        return canvasFrame;
     }
 
     /**
@@ -485,7 +512,7 @@ export class LocationBootstrap extends Component implements LocationTourHost {
                 return;
             }
             if (!layer.isValid || this.currentSceneId !== sceneId) return;
-            sprite.spriteFrame = frame;
+            sprite.spriteFrame = this.createCanvasForegroundFrame(frame);
             sprite.sizeMode = Sprite.SizeMode.CUSTOM;
             sprite.trim = false;
             transform.setContentSize(this.sceneConfig.worldSize);

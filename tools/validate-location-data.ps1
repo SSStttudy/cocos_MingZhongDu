@@ -135,6 +135,16 @@ foreach ($entry in $documents.GetEnumerator()) {
                     $_.importer -eq 'sprite-frame'
                 })[0]
                 $data = $spriteMeta.userData
+                if (-not $spriteMeta) {
+                    $errors.Add("$prefix/$($line.id) foreground is missing sprite-frame metadata: $asset")
+                    continue
+                }
+                if ([string]$data.trimType -ne 'none') {
+                    $errors.Add("$prefix/$($line.id) foreground must use trimType=none: $asset")
+                }
+                if ($data.packable -ne $false) {
+                    $errors.Add("$prefix/$($line.id) foreground must use packable=false: $asset")
+                }
                 if ($data -and [double]$data.rawWidth -gt 0) {
                     $opaqueMinX = [double]$data.trimX / [double]$data.rawWidth
                     $opaqueMaxX = ([double]$data.trimX + [double]$data.width) / [double]$data.rawWidth

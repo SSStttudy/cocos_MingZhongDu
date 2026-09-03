@@ -38,9 +38,9 @@ function defaultState(): FragmentCollectionState {
 function validFragmentIds(values: unknown): string[] {
     if (!Array.isArray(values)) return [];
     const validIds = new Set(FRAGMENT_DEFINITIONS.map((item) => item.id));
-    return [...new Set(values.filter((item): item is string => (
+    return Array.from(new Set(values.filter((item): item is string => (
         typeof item === 'string' && validIds.has(item)
-    )))];
+    ))));
 }
 
 export class FragmentCollectionStore {

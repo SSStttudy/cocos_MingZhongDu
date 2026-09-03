@@ -40,12 +40,19 @@ function cloneAnchor(anchor: TourResumeAnchor): TourResumeAnchor {
 
 function validIds(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
-    return [...new Set(value.filter((id): id is string => typeof id === 'string' && getTourStep(id) !== null))];
+    // Cocos 的 Babel 构建会把 `[...new Set(values)]` 降级成
+    // `[].concat(new Set(values))`，最终存成 `[{}]`。显式使用 Array.from
+    // 才能在 Web 与微信小游戏运行时得到真正的字符串数组。
+    return Array.from(new Set(
+        value.filter((id): id is string => typeof id === 'string' && getTourStep(id) !== null),
+    ));
 }
 
 function validStringIds(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
-    return [...new Set(value.filter((id): id is string => typeof id === 'string' && id.length > 0))];
+    return Array.from(new Set(
+        value.filter((id): id is string => typeof id === 'string' && id.length > 0),
+    ));
 }
 
 function normalizeAnchor(value: unknown): TourResumeAnchor {

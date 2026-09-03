@@ -83,8 +83,34 @@ export class LocationTourGuide extends Component {
         host.node.on(TOUR_FEATURE_EVENTS.fragmentCollected, this.onFragmentCollected, this);
         host.node.on(TOUR_FEATURE_EVENTS.fragmentSceneCompleted, this.onFragmentSceneCompleted, this);
         host.node.on(TOUR_FEATURE_EVENTS.magnifierExpanded, this.onMagnifierExpanded, this);
+        this.recoverCompletedArrivalStep();
         this.refreshObjective(true);
         this.updateTarget();
+        // 场景首次启用时，远程资源包与脚本组件可能在同一帧完成挂载。
+        // 下一帧再同步一次，覆盖入口回调和地点组件初始化之间的时序差。
+        this.scheduleOnce(() => {
+            if (!this.host || !this.recoverCompletedArrivalStep()) return;
+            this.refreshObjective(false);
+            this.updateTarget();
+        }, 0);
+    }
+
+    /**
+     * 场景切换与进度写入并非同一事务。若玩家已经进入目标地点，但大地图
+     * 的入口回调因触发点编号不同或中途关闭游戏而没有落盘，就在地点场景
+     * 初始化时补记“到达”步骤，避免导览永久停在上一阶段。
+     */
+    private recoverCompletedArrivalStep(): boolean {
+        if (!this.host) return false;
+        const step = TourProgressStore.getCurrentStep();
+        if (step?.kind !== 'overworld-entrance') return false;
+        const destination = step.resumeAfter;
+        if (
+            destination.kind !== 'location'
+            || destination.locationId !== this.host.getTourLocationId()
+        ) return false;
+        TourProgressStore.markVisited(step.id, destination);
+        return true;
     }
 
     update(deltaTime: number): void {
@@ -147,9 +173,12 @@ export class LocationTourGuide extends Component {
         this.overlay?.setContextAction('查看', null);
         if (
             step?.kind !== 'return-overworld'
-            || step.overworldEntryId !== entryId
+            || step.locationId !== this.host?.getTourLocationId()
         ) return;
-        TourProgressStore.markVisited(step.id, step.resumeAfter);
+        // The configured exit is a route recommendation, not a hard lock. A
+        // player leaving through another valid gate has still completed this
+        // stage; save the gate actually used so resume restores them correctly.
+        TourProgressStore.markVisited(step.id, { kind: 'overworld', entryId });
     }
 
     activateCurrentTarget(): boolean {

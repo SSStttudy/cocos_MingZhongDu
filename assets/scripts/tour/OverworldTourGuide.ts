@@ -79,17 +79,18 @@ export class OverworldTourGuide extends Component {
         const discovered = TOUR_STEPS.find((step) => (
             step.kind === 'overworld-entrance' && step.entranceId === source.entranceId
         ));
-        if (discovered) TourProgressStore.markDiscovered(discovered.id);
-
         const current = TourProgressStore.getCurrentStep();
         if (
             current?.kind === 'overworld-entrance'
             && current.entranceId === source.entranceId
-            && (!current.entryPointId || current.entryPointId === source.id)
         ) {
+            // entryPointId 只用于把路线引向推荐入口。地点圆环存在多个
+            // 实际触发点，玩家从同一地点的其他入口进入时也应算作到达。
             TourProgressStore.markVisited(current.id, current.resumeAfter);
             this.refreshObjective(false);
             this.redrawRouteDots(true);
+        } else if (discovered) {
+            TourProgressStore.markDiscovered(discovered.id);
         }
         // 进入地点仍交给 OverworldBootstrap，导览只记录当前“到达”步骤。
         return false;
