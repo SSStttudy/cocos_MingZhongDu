@@ -1600,38 +1600,7 @@
           ]
         }
       ],
-      "occlusionLines": [
-        {
-          "id": "foreground-stone-remains",
-          "enabled": true,
-          "foregroundAsset": "7-right-foreground",
-          "points": [
-            {
-              "x": 0.18,
-              "y": 0.86
-            },
-            {
-              "x": 0.57,
-              "y": 0.86
-            }
-          ]
-        },
-        {
-          "id": "foreground-right-fence",
-          "enabled": true,
-          "foregroundAsset": "7-right-foreground",
-          "points": [
-            {
-              "x": 0.79,
-              "y": 0.72
-            },
-            {
-              "x": 1.05,
-              "y": 0.72
-            }
-          ]
-        }
-      ],
+      "occlusionLines": [],
       "perspective": {
         "nearY": -496.1,
         "nearVisualHeight": 400,

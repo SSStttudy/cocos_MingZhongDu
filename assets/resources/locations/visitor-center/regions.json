@@ -285,17 +285,7 @@
           ]
         }
       ],
-      "occlusionLines": [
-        {
-          "id": "wang-statue",
-          "enabled": true,
-          "foregroundAsset": "exterior-wang-statue-foreground",
-          "points": [
-            { "x": 0.035, "y": 0.57 },
-            { "x": 0.285, "y": 0.57 }
-          ]
-        }
-      ],
+      "occlusionLines": [],
       "perspective": {
         "nearY": -480,
         "nearVisualHeight": 400,
@@ -489,26 +479,7 @@
           ]
         }
       ],
-      "occlusionLines": [
-        {
-          "id": "sand-table-front",
-          "enabled": true,
-          "foregroundAsset": "interior-sand-table-foreground",
-          "points": [
-            { "x": 0.06, "y": 0.67 },
-            { "x": 0.49, "y": 0.82 }
-          ]
-        },
-        {
-          "id": "sand-table-right",
-          "enabled": true,
-          "foregroundAsset": "interior-sand-table-foreground",
-          "points": [
-            { "x": 0.49, "y": 0.82 },
-            { "x": 0.66, "y": 0.61 }
-          ]
-        }
-      ],
+      "occlusionLines": [],
       "perspective": {
         "nearY": -481.814,
         "nearVisualHeight": 400,
