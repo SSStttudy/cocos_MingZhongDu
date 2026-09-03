@@ -384,15 +384,15 @@ export class SettingsOverlay extends Component {
         const panel = this.createCategoryPanel('survey');
         this.createActionRow(
             panel,
-            '文化传播体验调查',
-            '共15题，约3—4分钟，重点了解文化传播效果',
+            '应用体验调查',
+            '共7题，约1—2分钟，分享您的体验感受',
             '开始填写',
             70,
             () => this.surveyQuestionnaire?.open(),
             false,
         );
         const note = SettingsOverlay.makeLabel(
-            '匿名填写，不收集姓名或联系方式。答卷将保存在当前设备。',
+            '自愿匿名填写，不收集姓名或联系方式。提交即表示同意参与，答卷保存在当前设备。',
             14,
             INK_MUTED,
             panel,
