@@ -81,9 +81,9 @@ export class InitialResourcePreloader {
                 8,
             ),
             this.directoryJob('guide-ui', '准备导览与放大镜', 'ui', 2),
-            this.directoryJob(
+            this.loadedDirectoryJob(
                 'visitor-scenes',
-                '下载游客中心画面',
+                '载入游客中心画面',
                 'locations/visitor-center/scenes',
                 9,
             ),
@@ -177,6 +177,57 @@ export class InitialResourcePreloader {
                 };
                 armTimeout();
                 resources.preloadDir(
+                    path,
+                    SpriteFrame,
+                    (completed, total) => {
+                        if (!settled) {
+                            armTimeout();
+                            report(total > 0 ? completed / total : 0);
+                        }
+                    },
+                    (error) => {
+                        if (error) console.warn(`[ResourceWarmup] ${label} 失败。`, error);
+                        finish(!error);
+                    },
+                );
+            }),
+        };
+    }
+
+    /**
+     * 首段场景需要在进入前完成反序列化与纹理解码。仅调用 preloadDir
+     * 会把文件下载到缓存，但冷启动恢复存档时仍可能先显示数秒黑底。
+     * 这里只对约 4 MiB 的游客中心画面使用 loadDir；后续大场景继续
+     * 使用 preloadDir，以免一次性解码全路线图片造成手机内存峰值。
+     */
+    private static loadedDirectoryJob(
+        key: string,
+        label: string,
+        path: string,
+        weight: number,
+    ): WarmupJob {
+        return {
+            key,
+            label,
+            weight,
+            run: (report) => new Promise<boolean>((resolve) => {
+                let settled = false;
+                let timer: ReturnType<typeof setTimeout> | null = null;
+                const finish = (success: boolean): void => {
+                    if (settled) return;
+                    settled = true;
+                    if (timer) clearTimeout(timer);
+                    resolve(success);
+                };
+                const armTimeout = (): void => {
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        console.warn(`[ResourceWarmup] ${label} 长时间无进度，将在需要时重试。`);
+                        finish(false);
+                    }, JOB_TIMEOUT_MS);
+                };
+                armTimeout();
+                resources.loadDir(
                     path,
                     SpriteFrame,
                     (completed, total) => {
