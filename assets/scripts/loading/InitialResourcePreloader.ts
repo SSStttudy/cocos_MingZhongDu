@@ -1,4 +1,4 @@
-import { director, resources, SpriteFrame } from 'cc';
+import { AudioClip, director, resources, SpriteFrame } from 'cc';
 
 export type InitialWarmupProgress = {
     ratio: number;
@@ -93,6 +93,7 @@ export class InitialResourcePreloader {
                 'interactions/visitor-center',
                 1,
             ),
+            this.audioDirectoryJob('background-music', '缓存导览背景音乐', 'audio', 4),
             this.directoryJob('fragments', '准备碎片线索', 'fragments', 3),
         ];
     }
@@ -178,6 +179,51 @@ export class InitialResourcePreloader {
                 resources.preloadDir(
                     path,
                     SpriteFrame,
+                    (completed, total) => {
+                        if (!settled) {
+                            armTimeout();
+                            report(total > 0 ? completed / total : 0);
+                        }
+                    },
+                    (error) => {
+                        if (error) console.warn(`[ResourceWarmup] ${label} 失败。`, error);
+                        finish(!error);
+                    },
+                );
+            }),
+        };
+    }
+
+    private static audioDirectoryJob(
+        key: string,
+        label: string,
+        path: string,
+        weight: number,
+    ): WarmupJob {
+        return {
+            key,
+            label,
+            weight,
+            run: (report) => new Promise<boolean>((resolve) => {
+                let settled = false;
+                let timer: ReturnType<typeof setTimeout> | null = null;
+                const finish = (success: boolean): void => {
+                    if (settled) return;
+                    settled = true;
+                    if (timer) clearTimeout(timer);
+                    resolve(success);
+                };
+                const armTimeout = (): void => {
+                    if (timer) clearTimeout(timer);
+                    timer = setTimeout(() => {
+                        console.warn(`[ResourceWarmup] ${label} 长时间无进度，将在需要时重试。`);
+                        finish(false);
+                    }, JOB_TIMEOUT_MS);
+                };
+                armTimeout();
+                resources.preloadDir(
+                    path,
+                    AudioClip,
                     (completed, total) => {
                         if (!settled) {
                             armTimeout();

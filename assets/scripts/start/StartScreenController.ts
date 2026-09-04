@@ -93,7 +93,7 @@ export class StartScreenController extends Component {
             ratio: 0,
             label: '正在检查本地缓存',
             completedGroups: 0,
-            totalGroups: 8,
+            totalGroups: 9,
         });
         void InitialResourcePreloader.warmupCritical((progress) => {
             if (this.node.isValid) this.updateWarmupProgress(progress);
