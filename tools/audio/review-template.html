@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>风过中都 · 声音审查</title>
+<style>
+:root{--paper:#f5f3ed;--ink:#263e35;--muted:#758177;--line:#dce0d5;--gold:#aa8050;--white:#fffefa}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.7 "Segoe UI","Microsoft YaHei",sans-serif}button,input,textarea{font:inherit}button,a,input{touch-action:manipulation}button,a{ -webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #aa8050;outline-offset:4px}button:disabled{cursor:wait;opacity:.55}a{color:inherit}header{border-bottom:1px solid var(--line)}.nav{max-width:1180px;margin:auto;padding:23px 30px;display:flex;justify-content:space-between;align-items:center;gap:16px}.brand{display:flex;align-items:center;gap:13px;letter-spacing:2px;font-weight:600}.seal{border:1px solid var(--ink);width:31px;height:34px;display:grid;place-items:center;font-family:serif;font-size:21px}.nav-note{font-size:12px;color:var(--muted);letter-spacing:1px}.dot{display:inline-block;width:6px;height:6px;background:#8ca585;border-radius:50%;margin-right:8px}main{max-width:1180px;margin:auto;padding:47px 30px 36px}.eyebrow{font-size:11px;letter-spacing:2.5px;color:var(--gold);font-weight:600}.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:30px;margin-bottom:29px}h1{font:46px/1.35 "STSong","SimSun",serif;letter-spacing:7px;margin:10px 0 12px}.intro{color:var(--muted);margin:0;font-size:14px}.version{display:inline-flex;align-items:center;border:1px solid #cdd6c9;border-radius:20px;padding:6px 15px;font-size:12px;white-space:nowrap;margin-bottom:5px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start}.player{border:1px solid var(--line);background:var(--white);border-radius:12px;overflow:hidden}.art{height:168px;position:relative;overflow:hidden;background:#e4e9de}.art svg{width:100%;height:100%;display:block}.art-note{position:absolute;left:27px;top:22px;font-size:10px;letter-spacing:3px;color:#58705d}.art-caption{position:absolute;left:27px;bottom:15px;font-family:serif;letter-spacing:5px;color:#51684f;font-size:13px}.player-body{padding:25px 28px 24px}.track-row{display:flex;justify-content:space-between;align-items:center;gap:12px}.track-name{font-size:20px;font-weight:600;letter-spacing:1px}.track-sub{font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:.6px}.duration-pill{font-size:12px;color:var(--muted);padding:4px 9px;background:#f3f4ee;border-radius:5px}.wave{margin:21px 0 1px;height:66px;position:relative}.wave svg{display:block;width:100%;height:100%}.wave input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}.wave:focus-within{outline:2px solid var(--gold);outline-offset:3px;border-radius:5px}.time-row{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}.transport{display:flex;gap:12px;align-items:center;margin-top:20px;flex-wrap:wrap}.primary{border:0;border-radius:7px;background:var(--ink);color:white;padding:10px 19px;min-width:129px;display:inline-flex;align-items:center;justify-content:center;gap:10px}.primary svg{width:16px;height:16px;fill:currentColor}.quiet{border:1px solid var(--line);background:transparent;border-radius:7px;padding:9px 12px;font-size:12px;color:var(--ink)}.quiet[aria-pressed=true]{background:#edf2e8;border-color:#bdcbb7}.volume{margin-left:auto;display:flex;align-items:center;gap:7px;color:var(--muted);font-size:11px}.volume input{width:75px;accent-color:var(--ink)}.volume output{width:28px;text-align:right;font-variant-numeric:tabular-nums}.status{font-size:12px;color:var(--muted);min-height:21px;margin-top:15px}.player-bottom{border-top:1px solid var(--line);margin-top:17px;padding-top:15px;display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted)}.download{text-decoration:none;color:var(--ink);border-bottom:1px solid #b1bbaa}.side{background:#edf0e7;border:1px solid #dde3d6;border-radius:12px;padding:24px}.side h2,.feedback h2{font-size:15px;font-weight:600;margin:0 0 22px;letter-spacing:1px}.listen-item{display:grid;grid-template-columns:21px 1fr;gap:12px;margin-bottom:20px}.listen-item:last-of-type{margin-bottom:0}.number{font-size:11px;color:var(--gold);font-family:Georgia,serif;padding-top:3px}.listen-title{font-size:13px;font-weight:600;margin:0 0 3px}.listen-copy{font-size:12px;color:#778173;line-height:1.8;margin:0}.side-foot{border-top:1px solid #d8dfd0;margin-top:22px;padding-top:16px;font-size:11px;color:#778173}.details{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 0}.detail{border-top:1px solid var(--line);padding:14px 2px}.detail dt{font-size:10px;letter-spacing:1px;color:var(--muted);margin-bottom:5px}.detail dd{font-size:12px;margin:0}.feedback{margin-top:26px;border-top:1px solid var(--line);padding-top:23px}.feedback-top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:15px}.feedback h2{margin:0}.local-note{font-size:11px;color:var(--muted)}.decision{display:flex;gap:9px;margin-bottom:12px;flex-wrap:wrap}.choice{border:1px solid var(--line);border-radius:6px;padding:6px 13px;font-size:12px;color:var(--muted);cursor:pointer}.choice:has(input:checked){color:var(--ink);border-color:#97ab8e;background:#e9eee2}.choice input{accent-color:var(--ink);margin:0 5px 0 0;vertical-align:middle}textarea{display:block;width:100%;resize:vertical;min-height:83px;max-height:300px;border:1px solid var(--line);border-radius:7px;background:#fffefa;padding:12px;color:var(--ink);font-size:13px}textarea::placeholder{color:#929b90}.feedback-actions{display:flex;align-items:center;justify-content:space-between;margin-top:12px;gap:15px}.saved{font-size:11px;color:var(--muted)}footer{display:flex;justify-content:space-between;gap:15px;margin-top:29px;color:var(--muted);font-size:10px;letter-spacing:.3px}details{margin-top:20px;color:var(--muted);font-size:11px}summary{cursor:pointer;width:fit-content}details p{max-width:800px;line-height:1.8}.error{color:#a34335}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+@media(max-width:860px){.layout{grid-template-columns:1fr}.side{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px}.side h2{grid-column:1/-1;margin-bottom:0}.listen-item{margin:0;gap:8px}.side-foot{grid-column:1/-1;margin:0;padding-top:12px}.hero{gap:15px}.volume{margin-left:auto}}
+@media(max-width:520px){.nav{padding:18px 20px}.nav-note{display:none}main{padding:30px 19px 24px}h1{font-size:37px;letter-spacing:5px}.hero{display:block}.version{margin-top:17px}.intro{font-size:12px}.player-body{padding:21px 18px}.art{height:133px}.transport{gap:8px}.primary{min-width:108px;padding:10px 13px}.quiet{padding:9px}.volume{flex-basis:100%;justify-content:flex-end;margin-top:5px}.side{display:block}.side h2{margin-bottom:16px}.listen-item{margin-bottom:14px}.side-foot{margin-top:17px}.details{gap:7px}.detail dd{font-size:11px}.feedback-top{display:block}.local-note{display:block;margin-top:5px}.player-bottom{flex-wrap:wrap}footer{display:block}footer span{display:block;margin-bottom:5px}}
+</style>
+</head>
+<body>
+<header><div class="nav"><div class="brand"><span class="seal" aria-hidden="true">中</span><span>明中都 · 声音审查</span></div><div class="nav-note"><span class="dot"></span>本地试听 / AUDIO REVIEW</div></div></header>
+<main>
+  <section class="hero" aria-labelledby="page-title"><div><div class="eyebrow">SOUND STUDY &nbsp; / &nbsp; 001</div><h1 id="page-title">风过中都</h1><p class="intro">给游览留一点安静。疏落拨弦、柔和长音，与很轻的风。</p></div><span class="version">背景循环音 &nbsp; · &nbsp; v01 待审</span></section>
+  <div class="layout"><div>
+    <section class="player" aria-label="背景音播放器">
+      <div class="art" aria-hidden="true"><span class="art-note">MING ZHONG DU</span><svg viewBox="0 0 800 190" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#e8ebdf"/><stop offset="1" stop-color="#dce4d4"/></linearGradient></defs><path fill="url(#sky)" d="M0 0h800v190H0z"/><circle cx="642" cy="56" r="25" fill="#f6f2dd" opacity=".8"/><path d="M0 130Q130 95 280 128T590 112T800 126V190H0Z" fill="#c6d1bd"/><path d="M0 155L132 145L187 148L224 131L240 132L240 119L250 119L250 132L273 132L273 119L283 119L283 132L306 132L306 119L316 119L316 134L407 149L494 135L556 145L683 132L800 147V190H0Z" fill="#9bad94" opacity=".56"/><path d="M0 175Q125 152 265 167T516 161T800 170V190H0Z" fill="#738e72" opacity=".45"/><path d="M426 173Q489 167 532 154" fill="none" stroke="#eff1e6" stroke-width="2" opacity=".6"/><path d="M40 106q29-7 57 0m450-17q33-7 63-1m93 31q26-5 48-1" fill="none" stroke="#f5f4e8" stroke-width="1.5" opacity=".7"/></svg><span class="art-caption">疏音入景，留白于声</span></div>
+      <div class="player-body"><div class="track-row"><div><div class="track-name">风过中都 <span style="font-size:12px;font-weight:400;color:var(--muted)">/ 循环样音</span></div><div class="track-sub">MZD-BG-001 &nbsp; · &nbsp; 原创程序合成 &nbsp; · &nbsp; 无人声</div></div><span class="duration-pill">24 秒</span></div>
+        <div class="wave"><svg id="waveform" viewBox="0 0 720 66" preserveAspectRatio="none" aria-hidden="true"></svg><input id="seek" type="range" min="0" max="23.999" step=".01" value="0" aria-label="播放位置" aria-valuetext="0 秒，共 24 秒"></div>
+        <div class="time-row"><span id="elapsed">00:00</span><span>00:24</span></div>
+        <div class="transport"><button class="primary" id="play" type="button"><svg id="play-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2l10 6-10 6z"/></svg><span id="play-label">播放试听</span></button><button class="quiet" id="loop" type="button" aria-pressed="true">循环：开</button><button class="quiet" id="seam" type="button">听循环接缝</button><label class="volume">音量<input id="volume" type="range" min="0" max="100" value="65" aria-label="试听音量"><output id="volume-value">65%</output></label></div>
+        <div class="status" id="status" role="status" aria-live="polite">点击播放开始试听，默认连续循环。</div>
+        <div class="player-bottom"><span>44.1 kHz / 16 bit / 双声道 &nbsp; · &nbsp; <span id="size"></span> MiB</span><a class="download" id="download" href="#" download>下载 WAV 样音 ↓</a></div>
+      </div>
+    </section>
+    <dl class="details"><div class="detail"><dt>声音层次</dt><dd>合成拨弦 / 长音 / 轻风</dd></div><div class="detail"><dt>节奏与结构</dt><dd>80 BPM · 8 小节循环</dd></div><div class="detail"><dt>当前用途</dt><dd>方向试听 · 尚未接入游戏</dd></div></dl>
+  </div><aside class="side"><h2>这一轮，听什么？</h2><div class="listen-item"><span class="number">01</span><div><p class="listen-title">音色，是否合适</p><p class="listen-copy">拨弦的质感是否舒服？会不会太电子、太清亮？</p></div></div><div class="listen-item"><span class="number">02</span><div><p class="listen-title">存在感，是否刚好</p><p class="listen-copy">想象一边走路一边读导览，旋律会不会抢走注意力？</p></div></div><div class="listen-item"><span class="number">03</span><div><p class="listen-title">循环，是否自然</p><p class="listen-copy">点击「听循环接缝」，从第 21 秒跨到开头，听有没有跳变。</p></div></div><div class="side-foot">这是合成音色方向稿。先确认感觉，再决定是否换成真实乐器或环境录音。</div></aside></div>
+  <section class="feedback" aria-labelledby="feedback-title"><div class="feedback-top"><h2 id="feedback-title">留下这一版的意见</h2><span class="local-note">意见仅保存在本机浏览器，导出后可交回修改。</span></div><fieldset style="border:0;padding:0;margin:0"><legend class="sr-only">审查结论</legend><div class="decision"><label class="choice"><input type="radio" name="decision" value="pending" checked>尚未决定</label><label class="choice"><input type="radio" name="decision" value="approved">这个方向可以</label><label class="choice"><input type="radio" name="decision" value="revise">需要调整</label></div></fieldset><label class="sr-only" for="notes">修改意见</label><textarea id="notes" maxlength="5000" placeholder="例如：旋律再少一点；拨弦更柔和；风声稍微明显一些……"></textarea><div class="feedback-actions"><span class="saved" id="saved" role="status">尚未填写意见</span><button class="quiet" id="export" type="button">导出审查意见 ↓</button></div></section>
+  <details><summary>查看来源与制作记录</summary><p>此样音由本地 Python / NumPy 合成，固定种子 9042026；没有使用第三方录音素材或在线生成服务。音符尾音、混响与风声均按 24 秒周期处理。整体仅施加统一增益，PCM 峰值约 −5 dBFS。合成拨弦不代表真实古琴或古筝录音，风声也不是遗址实录。</p><p>WAV 为试听母版，未做微信包体压缩。源脚本、完整来源清单与波形检查结果见同目录交付记录。浏览器中的“方向可以”只记录本次听感意见，不会自动接入游戏、发布或上传。</p></details>
+  <footer><span>明中都遗址探索 &nbsp; / &nbsp; 声音设计工作样例</span><span>单文件离线页面 · 无外部请求 · v01</span></footer>
+</main>
+<script type="application/json" id="track-meta">__TRACK_META__</script>
+<script type="application/octet-stream" id="audio-data">__AUDIO_B64__</script>
+<script>
+'use strict';
+const meta = JSON.parse(document.getElementById('track-meta').textContent);
+const $ = id => document.getElementById(id);
+const key = 'mzd-audio-review-' + meta.id + '-' + meta.version;
+const bytes = Uint8Array.from(atob($('audio-data').textContent.trim()), c => c.charCodeAt(0));
+const audioUrl = URL.createObjectURL(new Blob([bytes], {type:'audio/wav'}));
+$('download').href = audioUrl;
+$('download').download = meta.fileName;
+$('size').textContent = meta.sizeMiB.toFixed(2);
+let context, gainNode, buffer, source, sourceGate, offset = 0, startedAt = 0, playing = false, looping = true, busy = false;
+let saveTimer, frameRequest = 0;
+const bars = [];
+meta.waveform.forEach((level, i) => {
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  const height = 7 + level * 46;
+  Object.entries({x:i*5+1,y:(66-height)/2,width:2.4,height,rx:1.2,fill:'#cbd4c3'}).forEach(([k,v])=>rect.setAttribute(k,v));
+  $('waveform').appendChild(rect); bars.push(rect);
+});
+const clock = seconds => '00:' + String(Math.floor(seconds)).padStart(2,'0');
+function position(){ if(!playing)return offset; const value=offset+context.currentTime-startedAt; return looping?value%meta.duration:Math.min(meta.duration,value); }
+function controls(){
+  $('play-label').textContent=playing?'暂停试听':'播放试听';
+  $('play-icon').innerHTML=playing?'<path d="M3 2h4v12H3zm7 0h4v12h-4z"/>':'<path d="M4 2l10 6-10 6z"/>';
+  $('play').setAttribute('aria-label',playing?'暂停试听':'播放试听');
+  $('loop').textContent='循环：'+(looping?'开':'关');
+  $('loop').setAttribute('aria-pressed',String(looping));
+}
+function paint(){
+  if(frameRequest)cancelAnimationFrame(frameRequest); frameRequest=0;
+  const value=position(); $('elapsed').textContent=clock(value);
+  $('seek').value=Math.min(value,23.999); $('seek').setAttribute('aria-valuetext',value.toFixed(1)+' 秒，共 24 秒');
+  bars.forEach((bar,i)=>bar.setAttribute('fill',i/144<value/meta.duration?'#4e7058':'#cbd4c3'));
+  if(playing)frameRequest=requestAnimationFrame(paint);
+}
+function stopSource(){
+  if(!source)return;
+  const old=source, gate=sourceGate, now=context.currentTime;
+  source=null;sourceGate=null;
+  gate.gain.cancelScheduledValues(now);gate.gain.setValueAtTime(gate.gain.value,now);gate.gain.linearRampToValueAtTime(0,now+.012);
+  old.onended=()=>{old.disconnect();gate.disconnect();};old.stop(now+.015);
+}
+async function prepare(){
+  if(!context){
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)throw new Error('此浏览器不支持音频缓冲区，请下载 WAV 试听。');
+    context=new AudioCtx(); gainNode=context.createGain(); gainNode.gain.value=Number($('volume').value)/100; gainNode.connect(context.destination);
+  }
+  // Resume directly from the user's gesture, before awaiting decoding.
+  await context.resume();
+  if(!buffer)buffer=await context.decodeAudioData(bytes.buffer.slice(0));
+}
+function startAt(value){
+  stopSource(); offset=value%meta.duration;
+  source=context.createBufferSource(); source.buffer=buffer; source.loop=looping;
+  source.loopStart=0; source.loopEnd=buffer.duration;
+  sourceGate=context.createGain();sourceGate.gain.setValueAtTime(0,context.currentTime);sourceGate.gain.linearRampToValueAtTime(1,context.currentTime+.012);sourceGate.connect(gainNode);source.connect(sourceGate);
+  const current=source, currentGate=sourceGate;
+  source.onended=()=>{if(source!==current)return;playing=false;offset=meta.duration;current.disconnect();currentGate.disconnect();source=null;sourceGate=null;controls();paint();$('status').textContent='本轮试听结束，可重新播放。';};
+  startedAt=context.currentTime; playing=true; source.start(0,offset); controls();paint();
+}
+async function perform(action){
+  if(busy)return;busy=true;$('play').disabled=true;$('seam').disabled=true;
+  try{await prepare();action();$('status').classList.remove('error');}
+  catch(error){$('status').textContent='播放失败：'+error.message;$('status').classList.add('error');}
+  finally{busy=false;$('play').disabled=false;$('seam').disabled=false;}
+}
+$('play').addEventListener('click',()=>{
+  if(playing){offset=position();playing=false;stopSource();controls();paint();$('status').textContent='已暂停，点击播放可继续。';return;}
+  perform(()=>{startAt(offset);$('status').textContent=looping?'正在试听 · 每 24 秒连续循环':'正在试听 · 本轮结束后停止';});
+});
+$('loop').addEventListener('click',()=>{offset=position();startedAt=context?context.currentTime:0;looping=!looping;if(source)source.loop=looping;controls();$('status').textContent=looping?'循环已开启。':'循环已关闭，本轮结束后停止。';});
+$('seam').addEventListener('click',()=>perform(()=>{looping=true;startAt(21);$('status').textContent='正在听接缝：21 秒 → 24 秒 → 0 秒，之后继续循环。';}));
+$('seek').addEventListener('input',()=>{const value=Number($('seek').value);if(playing)startAt(value);else{offset=value;paint();}});
+$('volume').addEventListener('input',()=>{const value=Number($('volume').value);$('volume-value').textContent=value+'%';if(gainNode)gainNode.gain.setTargetAtTime(value/100,context.currentTime,.02);});
+function feedback(){return{trackId:meta.id,version:meta.version,audioSha256:meta.sha256,decision:document.querySelector('input[name=decision]:checked').value,notes:$('notes').value,updatedAt:new Date().toISOString()};}
+function save(){try{localStorage.setItem(key,JSON.stringify(feedback()));$('saved').textContent='意见已保存在本机';}catch{$('saved').textContent='本机存储不可用，请导出意见保留。';}}
+try{const saved=JSON.parse(localStorage.getItem(key)||'null');if(saved){if(['pending','approved','revise'].includes(saved.decision))document.querySelector('input[value="'+saved.decision+'"]').checked=true;$('notes').value=typeof saved.notes==='string'?saved.notes:'';$('saved').textContent='已恢复本机保存的意见';}}catch{$('saved').textContent='本机存储不可用，可填写后直接导出。';}
+$('notes').addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeout(save,250);});
+document.querySelectorAll('input[name=decision]').forEach(input=>input.addEventListener('change',save));
+$('export').addEventListener('click',()=>{save();const url=URL.createObjectURL(new Blob([JSON.stringify(feedback(),null,2)],{type:'application/json;charset=utf-8'}));const anchor=document.createElement('a');anchor.href=url;anchor.download=meta.id+'-'+meta.version+'-review.json';document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);$('saved').textContent='已发起导出；请将下载的 JSON 手动交回。';});
+window.addEventListener('pagehide',()=>{if($('notes').value||document.querySelector('input[name=decision]:checked').value!=='pending')save();if(playing){offset=position();playing=false;stopSource();controls();paint();}});
+controls();paint();
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+{
+  "id": "MZD-BG-001",
+  "version": "v01",
+  "title": "风过中都",
+  "status": "试听待审，未接入游戏",
+  "category": "background_music",
+  "scope": "One locally synthesized looping background cue, requested for HTML review",
+  "author": "明中都项目音效样例；Codex 辅助编写合成脚本与原创音符序列",
+  "source": "tools/audio/create-background-review.py; no external recordings or samples",
+  "source_url": null,
+  "third_party_audio_license": "not applicable — no third-party audio assets used",
+  "output_license": "未附加 CC 或其他公共许可证；公开发布时由项目方确定",
+  "attribution": "没有第三方录音素材的署名条目；保留本生成记录",
+  "generation": {
+    "method": "Local deterministic additive synthesis + periodic filtered noise",
+    "tools": {
+      "python": "3.x",
+      "numpy": "2.3.5",
+      "wave": "Python standard library"
+    },
+    "seed": 9042026,
+    "external_ai_service": null,
+    "third_party_uploads": false,
+    "brief": "安静、克制的国风游览背景；疏落合成拨弦、柔和持续音、极轻风声；无配音、无鼓点。",
+    "tempo_bpm": 80,
+    "bars": 8,
+    "melody_midi": [
+      [
+        0.35,
+        62,
+        0.9
+      ],
+      [
+        1.85,
+        69,
+        0.63
+      ],
+      [
+        3.35,
+        66,
+        0.8
+      ],
+      [
+        4.85,
+        64,
+        0.59
+      ],
+      [
+        6.35,
+        71,
+        0.74
+      ],
+      [
+        7.85,
+        69,
+        0.63
+      ],
+      [
+        9.35,
+        64,
+        0.75
+      ],
+      [
+        10.85,
+        66,
+        0.57
+      ],
+      [
+        12.35,
+        74,
+        0.67
+      ],
+      [
+        13.85,
+        71,
+        0.58
+      ],
+      [
+        15.35,
+        69,
+        0.79
+      ],
+      [
+        16.85,
+        66,
+        0.61
+      ],
+      [
+        18.35,
+        64,
+        0.75
+      ],
+      [
+        19.85,
+        69,
+        0.56
+      ],
+      [
+        21.35,
+        66,
+        0.72
+      ],
+      [
+        22.85,
+        62,
+        0.78
+      ]
+    ]
+  },
+  "processing": [
+    "Soft 8 ms pluck attacks; partial-specific exponential decays; tapered releases",
+    "Wrap note and pad tails across the 24 s boundary",
+    "Add periodic low-level air and five circular stereo reverb taps",
+    "Remove DC; apply one common gain to target -5 dBFS sample peak",
+    "Round to stereo PCM16 WAV at 44.1 kHz; verify 4x estimated true peak and seam delta",
+    "Embed identical WAV bytes in a self-contained HTML review page"
+  ],
+  "audio_file": "mzd_bgm_wind_over_zhongdu_v01.wav",
+  "qa": {
+    "duration_seconds": 24,
+    "sample_rate_hz": 44100,
+    "channels": 2,
+    "pcm_bits": 16,
+    "sample_peak_dbfs": -5.0,
+    "estimated_true_peak_dbtp_4x": -4.991,
+    "rms_dbfs_not_lufs": -16.934,
+    "dc_offset": [
+      4e-09,
+      -2.2e-08
+    ],
+    "clipped_sample_count": 0,
+    "boundary_step_linear": 0.00689697,
+    "max_internal_step_linear": 0.07147217,
+    "p99_internal_step_linear": 0.02877808,
+    "loop_method": "periodic overlap-add, circular reverb and periodic FFT noise",
+    "bytes": 4233644,
+    "sha256": "c53217e849aced0d3b78fbca4b9e94839db02447ef7054e7ac5a8fa2a68e923e",
+    "subjective_listening": "pending user review"
+  },
+  "limitations": [
+    "Synthetic timbres, not authentic guqin/guzheng recordings or an on-site field recording",
+    "Review WAV and embedded HTML are outside assets; not game-ready size optimization",
+    "No subjective listening approval or WeChat device playback test yet"
+  ]
+}

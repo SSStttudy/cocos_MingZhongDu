@@ -19,6 +19,9 @@ node_modules/
 /art-review/site/
 /art-review/site-package.tar.gz
 
+# Downloaded source master is reproducible from docs/sunset-plains-audio.json.
+/art-review/audio/sunset-plains-source/*.wav
+
 #//////////////////////////
 # VSCode
 #//////////////////////////

@@ -28,6 +28,7 @@ import {
     saveSettings,
 } from './GameSettings';
 import { SurveyQuestionnaire } from './SurveyQuestionnaire';
+import { BackgroundMusic } from '../audio/BackgroundMusic';
 
 const { ccclass } = _decorator;
 
@@ -99,6 +100,7 @@ export class SettingsOverlay extends Component {
     private fadeTween: Tween<UIOpacity> | null = null;
 
     initialize(uiRoot: Node, options: SettingsOverlayOptions = {}): void {
+        BackgroundMusic.ensureStarted();
         this.uiRoot = uiRoot;
         this.options = options;
         this.build();
@@ -301,7 +303,7 @@ export class SettingsOverlay extends Component {
         const panel = this.createCategoryPanel('audio');
         this.createToggleRow(panel, '背景音乐', '控制导览及场景背景音乐', 'musicEnabled', 70);
         this.createToggleRow(panel, '游戏音效', '控制按钮、交互和提示音效', 'soundEnabled', -12);
-        const note = SettingsOverlay.makeLabel('音频资源接入后，播放模块将自动读取这些设置。', 14, INK_MUTED, panel, 560, 38);
+        const note = SettingsOverlay.makeLabel('背景音乐：Sunset Plains · Yoiyami（CC0）\n首次点击后播放，切换场景时继续。', 14, INK_MUTED, panel, 560, 38);
         note.node.name = 'SettingsAudioNote';
         note.node.setPosition(0, -76);
         note.horizontalAlign = Label.HorizontalAlign.LEFT;
