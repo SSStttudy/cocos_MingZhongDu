@@ -124,7 +124,22 @@ foreach ($entry in $documents.GetEnumerator()) {
             if (-not $checkedForegroundAssets.ContainsKey($assetPath)) {
                 $checkedForegroundAssets[$assetPath] = $true
                 $pngBytes = [System.IO.File]::ReadAllBytes($assetPath)
-                if ($pngBytes.Length -lt 26 -or $pngBytes[25] -notin @(4, 6)) {
+                $hasAlpha = $false
+                if ($pngBytes.Length -ge 26) {
+                    $colorType = $pngBytes[25]
+                    $hasAlpha = $colorType -in @(4, 6)
+                    if ($colorType -eq 3) {
+                        # Indexed PNG stores transparency in a tRNS chunk instead of the IHDR color type.
+                        for ($byteIndex = 8; $byteIndex -le $pngBytes.Length - 4; $byteIndex++) {
+                            if ($pngBytes[$byteIndex] -eq 116 -and $pngBytes[$byteIndex + 1] -eq 82 -and
+                                $pngBytes[$byteIndex + 2] -eq 78 -and $pngBytes[$byteIndex + 3] -eq 83) {
+                                $hasAlpha = $true
+                                break
+                            }
+                        }
+                    }
+                }
+                if (-not $hasAlpha) {
                     $errors.Add("$prefix/$($line.id) foreground PNG has no alpha channel: $asset")
                 }
             }

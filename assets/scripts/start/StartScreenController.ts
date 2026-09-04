@@ -19,6 +19,7 @@ import {
     view,
 } from 'cc';
 import { EDITOR } from 'cc/env';
+import { InitialResourcePreloader, InitialWarmupProgress } from '../loading/InitialResourcePreloader';
 import { LocationTransitionState } from '../location/LocationTransitionState';
 import { TourProgressStore } from '../tour/TourProgressStore';
 import { getLocationCocosSceneName } from '../tour/TourConfig';
@@ -61,6 +62,13 @@ export class StartScreenController extends Component {
     private scrollTransition: Node | null = null;
     private scrollLeft: Node | null = null;
     private scrollRight: Node | null = null;
+    private warmupPanel: Node | null = null;
+    private warmupDim: Graphics | null = null;
+    private warmupBar: Graphics | null = null;
+    private warmupStatus: Label | null = null;
+    private warmupDetail: Label | null = null;
+    private warmupReady = false;
+    private pendingStart = false;
     private starting = false;
     private resumeExistingTour = false;
     private lastWidth = 0;
@@ -74,23 +82,37 @@ export class StartScreenController extends Component {
             this.loadBackground();
         }
         this.layout(true);
-        this.preloadLikelyNextScene();
+        this.beginInitialWarmup();
     }
 
-    /** 玩家停留在首页时并行预热下一场景，减少点击开始后的等待。 */
-    private preloadLikelyNextScene(): void {
-        if (EDITOR) return;
-        let sceneName = 'Overworld';
-        if (this.resumeExistingTour) {
-            const anchor = TourProgressStore.load().resumeAnchor;
-            if (anchor.kind === 'location') {
-                sceneName = getLocationCocosSceneName(anchor.locationId);
+    private beginInitialWarmup(): void {
+        if (EDITOR || !this.warmupPanel) return;
+        this.warmupPanel.active = true;
+        this.warmupPanel.setSiblingIndex(this.screenRoot!.children.length - 1);
+        this.updateWarmupProgress({
+            ratio: 0,
+            label: '正在检查本地缓存',
+            completedGroups: 0,
+            totalGroups: 8,
+        });
+        void InitialResourcePreloader.warmupCritical((progress) => {
+            if (this.node.isValid) this.updateWarmupProgress(progress);
+        }).then((result) => {
+            if (!this.node.isValid || !this.warmupPanel) return;
+            this.warmupReady = true;
+            if (this.warmupStatus) this.warmupStatus.string = '游览资源准备完成';
+            if (this.warmupDetail) {
+                this.warmupDetail.string = result.failures.length > 0
+                    ? '个别资源将在进入对应场景时自动重试'
+                    : '后续地点会在游览途中静默缓存';
             }
-        }
-        director.preloadScene(sceneName, undefined, (error) => {
-            if (error && this.node.isValid) {
-                console.warn(`[StartScreen] ${sceneName} 后台预加载失败，将在进入时重试。`, error);
-            }
+            this.drawWarmupBar(1);
+            InitialResourcePreloader.warmupRemainingRoute();
+            this.scheduleOnce(() => {
+                if (!this.warmupPanel?.isValid) return;
+                this.warmupPanel.active = false;
+                if (this.pendingStart) this.startGame();
+            }, 0.35);
         });
     }
 
@@ -154,6 +176,7 @@ export class StartScreenController extends Component {
 
         this.createRestartPanel();
         this.createScrollTransition();
+        this.createWarmupPanel();
 
         if (!EDITOR) {
             // 启动时补传上一次离线保存的答卷，网页与微信小游戏共用同一后台。
@@ -164,6 +187,73 @@ export class StartScreenController extends Component {
             this.restartButton.on(Node.EventType.TOUCH_END, this.openRestartPanel, this);
             settingsButton.on(Node.EventType.TOUCH_END, this.openSettings, this);
         }
+    }
+
+    private createWarmupPanel(): void {
+        this.warmupPanel = this.createNode('InitialWarmupPanel', this.screenRoot!);
+        this.warmupPanel.addComponent(UITransform);
+        this.warmupPanel.addComponent(BlockInputEvents);
+        this.warmupPanel.active = !EDITOR;
+
+        const dim = this.createNode('WarmupDim', this.warmupPanel);
+        dim.addComponent(UITransform);
+        this.warmupDim = dim.addComponent(Graphics);
+
+        const card = this.createNode('WarmupCard', this.warmupPanel);
+        card.addComponent(UITransform).setContentSize(560, 218);
+        const cardGraphics = card.addComponent(Graphics);
+        cardGraphics.fillColor = new Color(28, 35, 31, 247);
+        cardGraphics.strokeColor = new Color(218, 181, 104, 240);
+        cardGraphics.lineWidth = 2;
+        cardGraphics.roundRect(-280, -109, 560, 218, 18);
+        cardGraphics.fill();
+        cardGraphics.stroke();
+
+        const title = this.createLabel('正在准备游览资源', 27, CREAM, card);
+        title.node.setPosition(0, 63);
+        this.warmupStatus = this.createLabel('正在检查本地缓存', 18, MUTED_CREAM, card);
+        this.warmupStatus.node.setPosition(0, 21);
+
+        const trackNode = this.createNode('WarmupTrack', card);
+        trackNode.setPosition(0, -23);
+        trackNode.addComponent(UITransform).setContentSize(456, 18);
+        const track = trackNode.addComponent(Graphics);
+        track.fillColor = new Color(10, 15, 12, 220);
+        track.roundRect(-228, -9, 456, 18, 9);
+        track.fill();
+        track.strokeColor = new Color(218, 181, 104, 150);
+        track.lineWidth = 1.5;
+        track.roundRect(-228, -9, 456, 18, 9);
+        track.stroke();
+
+        const fillNode = this.createNode('WarmupFill', trackNode);
+        fillNode.addComponent(UITransform).setContentSize(448, 12);
+        this.warmupBar = fillNode.addComponent(Graphics);
+        this.drawWarmupBar(0);
+
+        this.warmupDetail = this.createLabel('首次会稍久，之后将优先使用本地缓存', 15, GOLD, card);
+        this.warmupDetail.node.setPosition(0, -65);
+    }
+
+    private updateWarmupProgress(progress: InitialWarmupProgress): void {
+        const percent = Math.round(Math.max(0, Math.min(1, progress.ratio)) * 100);
+        if (this.warmupStatus) this.warmupStatus.string = `${progress.label} · ${percent}%`;
+        if (this.warmupDetail) {
+            this.warmupDetail.string = progress.completedGroups > 0
+                ? `首次缓存 ${progress.completedGroups}/${progress.totalGroups}，完成后场景内更流畅`
+                : '首次会稍久，之后将优先使用本地缓存';
+        }
+        this.drawWarmupBar(progress.ratio);
+    }
+
+    private drawWarmupBar(ratio: number): void {
+        if (!this.warmupBar) return;
+        const width = 448 * Math.max(0, Math.min(1, ratio));
+        this.warmupBar.clear();
+        if (width <= 0) return;
+        this.warmupBar.fillColor = new Color(204, 153, 72, 255);
+        this.warmupBar.roundRect(-224, -6, width, 12, Math.min(6, width * 0.5));
+        this.warmupBar.fill();
     }
 
     private createRestartPanel(): void {
@@ -327,6 +417,18 @@ export class StartScreenController extends Component {
             }
         }
 
+        if (this.warmupPanel) {
+            this.warmupPanel.getComponent(UITransform)?.setContentSize(visible);
+            const dim = this.warmupPanel.getChildByName('WarmupDim');
+            dim?.getComponent(UITransform)?.setContentSize(visible);
+            if (this.warmupDim) {
+                this.warmupDim.clear();
+                this.warmupDim.fillColor = new Color(7, 11, 9, 208);
+                this.warmupDim.rect(-visible.width * 0.5, -visible.height * 0.5, visible.width, visible.height);
+                this.warmupDim.fill();
+            }
+        }
+
         this.layoutScrollPanels(false);
     }
 
@@ -400,6 +502,15 @@ export class StartScreenController extends Component {
     private startGame(event?: EventTouch): void {
         this.stopTouch(event);
         if (this.starting || EDITOR) return;
+        if (!this.warmupReady) {
+            this.pendingStart = true;
+            if (this.warmupPanel) {
+                this.warmupPanel.active = true;
+                this.warmupPanel.setSiblingIndex(this.screenRoot!.children.length - 1);
+            }
+            return;
+        }
+        this.pendingStart = false;
         this.starting = true;
         this.settingsOverlay?.close();
         this.scrollTransition!.active = true;
