@@ -60,6 +60,44 @@ function Copy-DirectoryContents([string]$Source, [string]$Destination) {
     }
 }
 
+function New-PortableZip([string]$SourceDirectory, [string]$DestinationPath) {
+    # Compress-Archive writes Windows directory entries with backslashes and
+    # read-only directory permissions. When extracted on Linux those entries
+    # can leave Nginx unable to traverse resources/native. Store files only,
+    # with ZIP-standard forward slashes; unzip will create traversable folders.
+    Add-Type -AssemblyName System.IO.Compression
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    $source = [System.IO.Path]::GetFullPath($SourceDirectory).TrimEnd(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    )
+    $prefix = $source + [System.IO.Path]::DirectorySeparatorChar
+    $archive = [System.IO.Compression.ZipFile]::Open(
+        $DestinationPath,
+        [System.IO.Compression.ZipArchiveMode]::Create
+    )
+    try {
+        Get-ChildItem -LiteralPath $source -Recurse -File | Sort-Object FullName | ForEach-Object {
+            $entryName = $_.FullName.Substring($prefix.Length).Replace('\', '/')
+            $entry = $archive.CreateEntry(
+                $entryName,
+                [System.IO.Compression.CompressionLevel]::Optimal
+            )
+            $input = [System.IO.File]::OpenRead($_.FullName)
+            $outputStream = $entry.Open()
+            try {
+                $input.CopyTo($outputStream)
+            } finally {
+                $outputStream.Dispose()
+                $input.Dispose()
+            }
+        }
+    } finally {
+        $archive.Dispose()
+    }
+}
+
 $build = Resolve-ProjectPath $BuildRoot
 $output = Resolve-ProjectPath $OutputRoot
 $remoteOutput = Resolve-ProjectPath $RemoteOutputRoot
@@ -214,8 +252,8 @@ $distRoot = Split-Path -Parent $output
 $uploadZip = Join-Path $distRoot "mingzhongdu-wechat-project.zip"
 $remoteZip = Join-Path $distRoot "mingzhongdu-wechat-remote.zip"
 Remove-Item -LiteralPath $uploadZip,$remoteZip -Force -ErrorAction SilentlyContinue
-Compress-Archive -Path (Join-Path $output "*") -DestinationPath $uploadZip -CompressionLevel Optimal
-Compress-Archive -Path (Join-Path $remoteOutput "*") -DestinationPath $remoteZip -CompressionLevel Optimal
+New-PortableZip $output $uploadZip
+New-PortableZip $remoteOutput $remoteZip
 
 $manifest = [PSCustomObject]@{
     generatedAt = (Get-Date).ToString("o")
