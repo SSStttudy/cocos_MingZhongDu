@@ -1,0 +1,38 @@
+{
+  "title": "Sunset Plains",
+  "author": "Yoiyami",
+  "source_url": "https://opengameart.org/content/sunset-plains",
+  "download_url": "https://opengameart.org/sites/default/files/sunset_plains.wav",
+  "license": "CC0 1.0",
+  "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "No attribution required by source; author/source preserved in project credits.",
+  "selected_by_user": "第三个，接入游戏",
+  "checked_on": "2026-09-04",
+  "generation": "Existing third-party track; production tools not disclosed by author; no AI regeneration performed.",
+  "source_sha256": "f3750f8eda8bf42662b12f5726404675689b50f05ccaa968c5cb2e33d9172a62",
+  "runtime_sha256": "c58942190c451bff87ec156194bd9c17c7945cecb85c382aedbc3420dba9324d",
+  "source_seconds": 329.67997916666667,
+  "loop_seconds_before_encoding": 327.67997916666667,
+  "source_bytes": 63298600,
+  "runtime_bytes": 3933488,
+  "processing": [
+    "Stereo to mono",
+    "2-second tail/head linear crossfade; rotate by two seconds",
+    "Two-pass loudness normalization: -22 LUFS target, -2 dBTP ceiling",
+    "MP3 96 kbps, mono, 32 kHz; full song retained except overlap"
+  ],
+  "tool": "ffmpeg version 7.1-essentials_build-www.gyan.dev Copyright (c) 2000-2024 the FFmpeg developers",
+  "decoded_mp3_loudness": {
+    "input_i": "-22.44",
+    "input_tp": "-6.11",
+    "input_lra": "5.10",
+    "input_thresh": "-32.58",
+    "output_i": "-21.30",
+    "output_tp": "-5.11",
+    "output_lra": "4.70",
+    "output_thresh": "-31.36",
+    "normalization_type": "dynamic",
+    "target_offset": "-0.70"
+  },
+  "loop_note": "Crossfade prepared; compressed-loop playback still needs WeChat device listening check."
+}

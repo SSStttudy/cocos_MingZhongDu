@@ -1,0 +1,21 @@
+{
+  "duration_seconds": 24,
+  "sample_rate_hz": 44100,
+  "channels": 2,
+  "pcm_bits": 16,
+  "sample_peak_dbfs": -5.0,
+  "estimated_true_peak_dbtp_4x": -4.991,
+  "rms_dbfs_not_lufs": -16.934,
+  "dc_offset": [
+    4e-09,
+    -2.2e-08
+  ],
+  "clipped_sample_count": 0,
+  "boundary_step_linear": 0.00689697,
+  "max_internal_step_linear": 0.07147217,
+  "p99_internal_step_linear": 0.02877808,
+  "loop_method": "periodic overlap-add, circular reverb and periodic FFT noise",
+  "bytes": 4233644,
+  "sha256": "c53217e849aced0d3b78fbca4b9e94839db02447ef7054e7ac5a8fa2a68e923e",
+  "subjective_listening": "pending user review"
+}
