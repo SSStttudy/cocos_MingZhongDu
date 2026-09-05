@@ -141,10 +141,10 @@ export const LOCATION_CONFIGS: Record<string, LocationSceneConfig> = {
                     {
                         id: 'wang-ying-statue',
                         points: [
-                            new Vec2(-620, -115),
-                            new Vec2(-395, -115),
-                            new Vec2(-405, 65),
-                            new Vec2(-600, 85),
+                            new Vec2(-641.55, -76.8),
+                            new Vec2(-348.075, -76.8),
+                            new Vec2(-375.375, 35.84),
+                            new Vec2(-586.95, 35.84),
                         ],
                     },
                     {
